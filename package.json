@@ -1,17 +1,16 @@
 {
-  "name": "mtgduel-electron",
-  "version": "0.1.0",
-  "private": true,
-  "description": "Minimal Electron shell to load Moxfield and inject MTGDuel overlay button",
-  "main": "main.js",
-  "type": "commonjs",
+  "name": "moxfield",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/main/main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "dependencies": {},
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
   "devDependencies": {
-    "electron": "^31.3.0"
+    "electron": "^39.1.2"
   }
 }
-
-
