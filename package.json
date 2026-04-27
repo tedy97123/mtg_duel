@@ -6,7 +6,19 @@
   "scripts": {
     "start": "electron .",
     "relay": "node relay/server.js",
+    "dist": "electron-builder --win",
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "build": {
+    "appId": "com.mtgduel.app",
+    "productName": "MTG Duel",
+    "protocols": {
+      "name": "MTG Duel",
+      "schemes": ["mtgduel"]
+    },
+    "win": {
+      "target": "nsis"
+    }
   },
   "keywords": [],
   "author": "",
@@ -15,6 +27,7 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
-    "electron": "^39.1.2"
+    "electron": "^39.1.2",
+    "electron-builder": "^26.0.0"
   }
 }
