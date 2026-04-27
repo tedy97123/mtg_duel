@@ -5,11 +5,15 @@
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
+    "relay": "node relay/server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
   "devDependencies": {
     "electron": "^39.1.2"
   }

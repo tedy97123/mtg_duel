@@ -2,6 +2,9 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 const CHANNELS = {
   STATE_UPDATE: 'state-update',
+  COUNTER_UPDATE: 'counter-update',
+  CARD_ADJUSTMENTS: 'card-adjustments',
+  PING: 'ping',
 };
 
 const SAVE_STATE_KEY = 'playtester_savestate';
@@ -93,6 +96,8 @@ const PAGE_BRIDGE_SOURCE = `
     return null;
   }
 
+  var lastReceivedAdjustments = null;
+
   function applyBlob(blob) {
     if (typeof blob !== 'string' || blob.length === 0) {
       return false;
@@ -105,6 +110,11 @@ const PAGE_BRIDGE_SOURCE = `
     try {
       localStorage.setItem(SAVE_STATE_KEY, blob);
       instance.handleRestoreSaveState();
+      if (lastReceivedAdjustments) {
+        setTimeout(function() {
+          applyCardAdjustments(lastReceivedAdjustments);
+        }, 200);
+      }
       window.postMessage(
         {
           channel: CHANNEL,
@@ -129,6 +139,81 @@ const PAGE_BRIDGE_SOURCE = `
     }
   }
 
+  function applyCounters(counters) {
+    if (!counters || typeof counters !== 'object') return false;
+    var instance = window.__MOXFIELD_PLAYTESTER__ || findInstance();
+    if (!instance) {
+      console.warn(LOG_PREFIX, 'Cannot apply counters — instance not found');
+      return false;
+    }
+    try {
+      instance.setState(counters);
+      window.postMessage({ channel: CHANNEL, type: 'COUNTER_RESULT', ok: true }, '*');
+      return true;
+    } catch (error) {
+      console.warn(LOG_PREFIX, 'Failed to apply counters', error);
+      window.postMessage({ channel: CHANNEL, type: 'COUNTER_RESULT', ok: false, message: error?.message }, '*');
+      return false;
+    }
+  }
+
+  function applyCardAdjustments(adjustments) {
+    if (!adjustments || typeof adjustments !== 'object') return false;
+    lastReceivedAdjustments = adjustments;
+    var instance = window.__MOXFIELD_PLAYTESTER__ || findInstance();
+    if (!instance || !instance.state || !instance.state.zones) {
+      console.warn(LOG_PREFIX, 'Cannot apply card adjustments — instance not found');
+      return false;
+    }
+    try {
+      var zones = instance.state.zones;
+      var newZones = {};
+      var changed = false;
+      for (var zoneName in zones) {
+        var cards = zones[zoneName];
+        var adj = adjustments[zoneName];
+        if (!adj) {
+          newZones[zoneName] = cards;
+          continue;
+        }
+        var newCards = [];
+        for (var i = 0; i < cards.length; i++) {
+          var card = cards[i];
+          var cardAdj = adj[card.id] || adj[card.cardId];
+          if (cardAdj
+              && (card.adjustedPower !== cardAdj.adjustedPower
+                  || card.adjustedToughness !== cardAdj.adjustedToughness
+                  || card.adjustedLoyalty !== cardAdj.adjustedLoyalty
+                  || card.top !== cardAdj.top
+                  || card.left !== cardAdj.left
+                  || JSON.stringify(card.counters) !== JSON.stringify(cardAdj.counters))) {
+            newCards.push(Object.assign({}, card, {
+              adjustedPower: cardAdj.adjustedPower,
+              adjustedToughness: cardAdj.adjustedToughness,
+              adjustedLoyalty: cardAdj.adjustedLoyalty,
+              counters: cardAdj.counters,
+              top: cardAdj.top,
+              left: cardAdj.left
+            }));
+            changed = true;
+          } else {
+            newCards.push(card);
+          }
+        }
+        newZones[zoneName] = newCards;
+      }
+      if (changed) {
+        instance.setState({ zones: newZones });
+      }
+      window.postMessage({ channel: CHANNEL, type: 'ADJUSTMENT_RESULT', ok: true, changed: changed }, '*');
+      return changed;
+    } catch (error) {
+      console.warn(LOG_PREFIX, 'Failed to apply card adjustments', error);
+      window.postMessage({ channel: CHANNEL, type: 'ADJUSTMENT_RESULT', ok: false, message: error?.message }, '*');
+      return false;
+    }
+  }
+
   window.addEventListener('message', (event) => {
     if (event.source !== window) return;
     const data = event.data;
@@ -137,12 +222,17 @@ const PAGE_BRIDGE_SOURCE = `
     }
     if (data.type === 'APPLY_BLOB') {
       applyBlob(data.blob);
+    } else if (data.type === 'APPLY_COUNTERS') {
+      applyCounters(data.counters);
+    } else if (data.type === 'APPLY_CARD_ADJUSTMENTS') {
+      applyCardAdjustments(data.adjustments);
     } else if (data.type === 'FIND_REQUEST') {
       findInstance();
     }
   });
 
   setTimeout(findInstance, 0);
+
 })();
 `;
 
@@ -210,6 +300,39 @@ subscribeToStateUpdates((payload) => {
 
   applyIncomingBlob(payload.blob);
 });
+
+let lastAppliedCountersJson = null;
+let lastAppliedAdjustmentsJson = null;
+
+ipcRenderer.on(CHANNELS.COUNTER_UPDATE, (_event, payload) => {
+  if (!payload || !payload.counters) {
+    return;
+  }
+
+  const json = JSON.stringify(payload.counters);
+  if (json === lastAppliedCountersJson) {
+    return;
+  }
+
+  lastAppliedCountersJson = json;
+  log('Received counters', payload.counters);
+  postToPage('APPLY_COUNTERS', { counters: payload.counters });
+});
+
+ipcRenderer.on(CHANNELS.CARD_ADJUSTMENTS, (_event, payload) => {
+  if (!payload || !payload.adjustments) {
+    return;
+  }
+
+  const json = JSON.stringify(payload.adjustments);
+  if (json === lastAppliedAdjustmentsJson) {
+    return;
+  }
+
+  lastAppliedAdjustmentsJson = json;
+  log('Received card adjustments');
+  postToPage('APPLY_CARD_ADJUSTMENTS', { adjustments: payload.adjustments });
+});
 window.addEventListener('message', (event) => {
   if (event.source !== window) {
     return;
@@ -222,11 +345,28 @@ window.addEventListener('message', (event) => {
     log('Instance status from page', data);
   } else if (data.type === 'APPLY_RESULT' && !data.ok) {
     warn('Page failed to apply blob', data.message);
+  } else if (data.type === 'COUNTER_RESULT' && !data.ok) {
+    warn('Page failed to apply counters', data.message);
+  } else if (data.type === 'ADJUSTMENT_RESULT' && !data.ok) {
+    warn('Page failed to apply card adjustments', data.message);
   }
 });
 
+function injectHideZonesCSS() {
+  if (document.getElementById('moxfield-hide-zones')) return;
+  const style = document.createElement('style');
+  style.id = 'moxfield-hide-zones';
+  style.textContent = `
+    .player {
+      display: none !important;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 function initializeBridge() {
   injectPageBridge();
+  injectHideZonesCSS();
   postToPage('FIND_REQUEST');
 }
 
@@ -239,3 +379,110 @@ if (document.readyState === 'loading') {
 setInterval(() => {
   postToPage('FIND_REQUEST');
 }, FIND_INSTANCE_RETRY_MS);
+
+const REMOTE_PING_COLOR = '#ef4444';
+
+let cachedBoardEl = null;
+
+function findBoardContainer() {
+  if (cachedBoardEl && cachedBoardEl.isConnected) return cachedBoardEl;
+  const els = document.querySelectorAll('[style]');
+  for (const el of els) {
+    if (el.style.top && el.style.left && el.parentElement) {
+      const rect = el.parentElement.getBoundingClientRect();
+      if (rect.width > 200 && rect.height > 200) {
+        cachedBoardEl = el.parentElement;
+        return cachedBoardEl;
+      }
+    }
+  }
+  return document.documentElement;
+}
+
+function injectPingStyles() {
+  if (document.getElementById('moxfield-ping-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'moxfield-ping-styles';
+  style.textContent = `
+    @keyframes moxfield-ping-ripple {
+      0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
+      70% { transform: translate(-50%, -50%) scale(2.5); opacity: 0.4; }
+      100% { transform: translate(-50%, -50%) scale(3); opacity: 0; }
+    }
+    @keyframes moxfield-ping-dot {
+      0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+      60% { opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+    }
+    .moxfield-ping-ring {
+      position: fixed;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 999999;
+      border: 3px solid var(--ping-color);
+      animation: moxfield-ping-ripple 1.2s ease-out forwards;
+    }
+    .moxfield-ping-dot {
+      position: fixed;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 999999;
+      background: var(--ping-color);
+      animation: moxfield-ping-dot 1.2s ease-out forwards;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function showPing(offsetX, offsetY, color) {
+  injectPingStyles();
+  const board = findBoardContainer();
+  const rect = board.getBoundingClientRect();
+  const x = rect.left + offsetX;
+  const y = rect.top + offsetY;
+
+  const ring = document.createElement('div');
+  ring.className = 'moxfield-ping-ring';
+  ring.style.setProperty('--ping-color', color);
+  ring.style.left = x + 'px';
+  ring.style.top = y + 'px';
+
+  const dot = document.createElement('div');
+  dot.className = 'moxfield-ping-dot';
+  dot.style.setProperty('--ping-color', color);
+  dot.style.left = x + 'px';
+  dot.style.top = y + 'px';
+
+  document.body.appendChild(ring);
+  document.body.appendChild(dot);
+  ring.addEventListener('animationend', () => ring.remove());
+  dot.addEventListener('animationend', () => dot.remove());
+}
+
+function initPing() {
+  document.addEventListener('click', (event) => {
+    if (!event.altKey) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const board = findBoardContainer();
+    const rect = board.getBoundingClientRect();
+    const offsetX = event.clientX - rect.left;
+    const offsetY = event.clientY - rect.top;
+    showPing(offsetX, offsetY, REMOTE_PING_COLOR);
+    ipcRenderer.send(CHANNELS.PING, { x: offsetX, y: offsetY, color: REMOTE_PING_COLOR });
+  }, true);
+
+  ipcRenderer.on(CHANNELS.PING, (_event, payload) => {
+    showPing(payload.x, payload.y, payload.color);
+  });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initPing, { once: true });
+} else {
+  initPing();
+}
