@@ -86,7 +86,7 @@ wss.on('connection', (ws) => {
     try { msg = JSON.parse(raw.toString()); } catch { return; }
     console.log(`[${roomCode || 'no-room'}] ${msg.type}`);
 
-    // ── create-room (bot reserves host slot) ──────────────────────────────────
+    // ── create-room ───────────────────────────────────────────────────────────
     if (msg.type === 'create-room') {
       const code = generateCode();
       rooms.set(code, {
@@ -102,20 +102,21 @@ wss.on('connection', (ws) => {
       room.names[0]   = msg.name || 'Host';
       roomCode    = code;
       playerIndex = 0;
-      ws._isBotPlaceholder = true;
+      ws._isBotPlaceholder = !!msg._isBot;
 
       send(ws, { type: 'room-created', code, maxPlayers: MAX_PLAYERS, playerIndex: 0, players: playerList(room) });
       console.log(`Room ${code} created for ${msg.name}`);
 
-    // ── join-room-bot (bot reserves a guest slot) ─────────────────────────────
+    // ── join-room-bot (Discord bot reserves a guest slot) ─────────────────────
     } else if (msg.type === 'join-room-bot') {
       const code = (msg.code || '').toUpperCase();
       const room = rooms.get(code);
       if (!room)        { send(ws, { type: 'error', message: 'Room not found' }); return; }
       if (room.started) { send(ws, { type: 'error', message: 'Game already started' }); return; }
 
+      // Find first empty guest slot (skip 0 — always host)
       const slot = room.players.findIndex((p, i) => i > 0 && p === null);
-      if (slot === -1)  { send(ws, { type: 'error', message: 'Room is full' }); return; }
+      if (slot === -1) { send(ws, { type: 'error', message: 'Room is full' }); return; }
 
       room.players[slot] = ws;
       room.decks[slot]   = msg.deckUrl;
@@ -127,9 +128,31 @@ wss.on('connection', (ws) => {
       const list = playerList(room);
       send(ws, { type: 'slot-reserved', code, playerIndex: slot, maxPlayers: MAX_PLAYERS, players: list });
       broadcast(room, { type: 'player-joined', players: list }, slot);
-      console.log(`Bot reserved slot ${slot} for ${msg.name} in room ${code}`);
+      console.log(`Bot reserved slot ${slot} for ${msg.name} in ${code}`);
 
-    // ── attach-host (host Electron app takes over slot 0) ─────────────────────
+    // ── join-room (manual app join — finds first truly empty slot) ────────────
+    } else if (msg.type === 'join-room') {
+      const code = (msg.code || '').toUpperCase();
+      const room = rooms.get(code);
+      if (!room)        { send(ws, { type: 'error', message: 'Room not found' }); return; }
+      if (room.started) { send(ws, { type: 'error', message: 'Game already started' }); return; }
+
+      // Find first truly empty slot (no WS and no name) — works for both manual and Discord flows
+      const slot = room.players.findIndex((p, i) => i > 0 && !p && !room.names[i]);
+      if (slot === -1) { send(ws, { type: 'error', message: 'Room is full' }); return; }
+
+      room.players[slot] = ws;
+      room.decks[slot]   = msg.deckUrl;
+      room.names[slot]   = msg.name || `Player ${slot + 1}`;
+      roomCode    = code;
+      playerIndex = slot;
+
+      const list = playerList(room);
+      send(ws, { type: 'room-joined', code, playerIndex: slot, maxPlayers: MAX_PLAYERS, players: list });
+      broadcast(room, { type: 'player-joined', players: list }, slot);
+      console.log(`Player ${slot} (${msg.name}) joined ${code} manually`);
+
+    // ── attach-host ───────────────────────────────────────────────────────────
     } else if (msg.type === 'attach-host') {
       const code = (msg.code || '').toUpperCase();
       const room = rooms.get(code);
@@ -151,7 +174,7 @@ wss.on('connection', (ws) => {
       broadcast(room, { type: 'player-joined', players: list }, 0);
       console.log(`Host Electron attached to room ${code}`);
 
-    // ── attach-guest (guest Electron app takes over their reserved slot) ───────
+    // ── attach-guest ──────────────────────────────────────────────────────────
     } else if (msg.type === 'attach-guest') {
       const code = (msg.code || '').toUpperCase();
       const slot = parseInt(msg.slot);
@@ -173,7 +196,7 @@ wss.on('connection', (ws) => {
       const list = playerList(room);
       send(ws, { type: 'attached', code, playerIndex: slot, players: list, maxPlayers: MAX_PLAYERS });
       broadcast(room, { type: 'player-joined', players: list }, slot);
-      console.log(`Guest Electron attached to room ${code} slot ${slot}`);
+      console.log(`Guest Electron attached to slot ${slot} in room ${code}`);
 
     // ── start-game ────────────────────────────────────────────────────────────
     } else if (msg.type === 'start-game') {

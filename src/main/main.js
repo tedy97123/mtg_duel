@@ -69,19 +69,22 @@ function handleDeepLink(url) {
       );
     });
     waitingWindow.webContents.reload();
-    connectAndStart(params);
+    connectDiscord(params);
   } else {
     openWaitingRoom(params);
   }
 }
 
-// ── Waiting room ──────────────────────────────────────────────────────────────
-function openWaitingRoom(params) {
+// ── Waiting room window ───────────────────────────────────────────────────────
+function openWaitingRoom(params = {}) {
   if (waitingWindow) { waitingWindow.close(); waitingWindow = null; }
+
+  const code = params.code || '----';
+  const role = params.role || 'host';
 
   waitingWindow = new BrowserWindow({
     width: 560,
-    height: 780,
+    height: 860,
     title: 'MTG Duel',
     resizable: false,
     webPreferences: {
@@ -89,7 +92,7 @@ function openWaitingRoom(params) {
       contextIsolation: true,
       nodeIntegration: false,
       additionalArguments: [
-        `--waiting-params=${JSON.stringify({ code: params.code || '----', role: params.role || 'host' })}`,
+        `--waiting-params=${JSON.stringify({ code, role })}`,
       ],
     },
   });
@@ -97,35 +100,40 @@ function openWaitingRoom(params) {
   waitingWindow.loadFile(path.join(__dirname, '..', 'lobby', 'waiting-room.html'));
   waitingWindow.on('closed', () => { waitingWindow = null; });
 
-  if (params.deck) connectAndStart(params);
+  // Only auto-connect if launched via Discord deep link
+  if (params.deck) connectDiscord(params);
 }
 
-// ── Connect to relay ──────────────────────────────────────────────────────────
-function connectAndStart(params) {
+// ── Connect via Discord deep link (attach-host or attach-guest) ───────────────
+function connectDiscord(params) {
   const { role, code, deck, slot } = params;
-  if (ws) { ws.terminate(); ws = null; }
-
-  ws = new WebSocket(RELAY_URL);
-  ws._myDeckUrl = deck;
-  ws._myIndex   = role === 'host' ? 0 : (slot >= 0 ? slot : -1);
-  ws._role      = role;
-  ws._code      = code;
-  ws._slot      = slot;
-
-  ws.on('open', () => {
-    console.log('[Main] Connected, role:', role, 'code:', code, 'slot:', slot);
+  setupWs(deck, role === 'host' ? 0 : (slot >= 0 ? slot : -1), role, () => {
     if (role === 'host') {
       ws.send(JSON.stringify({ type: 'attach-host', code, deckUrl: deck }));
     } else {
-      // Guest attaches to their pre-reserved slot
       ws.send(JSON.stringify({ type: 'attach-guest', code, slot, deckUrl: deck }));
     }
+  });
+}
+
+// ── Shared WS setup ───────────────────────────────────────────────────────────
+function setupWs(deckUrl, myIndex, role, onOpen) {
+  if (ws) { ws.terminate(); ws = null; }
+
+  ws = new WebSocket(RELAY_URL);
+  ws._myDeckUrl = deckUrl;
+  ws._myIndex   = myIndex;
+  ws._role      = role;
+
+  ws.on('open', () => {
+    console.log('[Main] WS open, role:', role);
+    onOpen();
   });
 
   ws.on('message', (raw) => {
     let msg;
     try { msg = JSON.parse(raw.toString()); } catch { return; }
-    console.log('[Relay] Received:', msg.type);
+    console.log('[Relay]', msg.type);
     handleRelayMessage(msg);
   });
 
@@ -139,16 +147,34 @@ function connectAndStart(params) {
 
 // ── Relay messages ────────────────────────────────────────────────────────────
 function handleRelayMessage(msg) {
-  if (msg.type === 'attached') {
-    ws._myIndex = msg.playerIndex;
+  if (msg.type === 'room-created') {
+    ws._myIndex = 0;
     if (waitingWindow) waitingWindow.webContents.send('waiting:status', {
-      type: 'player-joined',
+      type: 'room-created',
+      code: msg.code,
       players: msg.players,
     });
 
   } else if (msg.type === 'room-joined') {
     ws._myIndex = msg.playerIndex;
     if (waitingWindow) waitingWindow.webContents.send('waiting:status', msg);
+
+  } else if (msg.type === 'slot-reserved') {
+    // Bot reserved a guest slot (Discord flow)
+    ws._myIndex = msg.playerIndex;
+    if (waitingWindow) waitingWindow.webContents.send('waiting:status', {
+      type: 'room-joined',
+      playerIndex: msg.playerIndex,
+      players: msg.players,
+      code: msg.code,
+    });
+
+  } else if (msg.type === 'attached') {
+    ws._myIndex = msg.playerIndex;
+    if (waitingWindow) waitingWindow.webContents.send('waiting:status', {
+      type: 'player-joined',
+      players: msg.players,
+    });
 
   } else if (msg.type === 'player-joined' || msg.type === 'player-disconnected') {
     if (waitingWindow) waitingWindow.webContents.send('waiting:status', msg);
@@ -197,10 +223,7 @@ function createGameWindow(preload, partition, url, x, y, width, height, label) {
 }
 
 function startGame(myDeckUrl, opponentPlayers) {
-  localWindow = createGameWindow(
-    'local-preload.js', 'persist:local-board',
-    myDeckUrl, 0, 0, 1280, 800, 'Local Board'
-  );
+  localWindow = createGameWindow('local-preload.js', 'persist:local-board', myDeckUrl, 0, 0, 1280, 800, 'Local Board');
   localWindow.on('closed', () => { localWindow = null; });
 
   remoteWindows = {};
@@ -230,10 +253,10 @@ app.whenReady().then(() => {
   if (deepLinkUrl) {
     handleDeepLink(deepLinkUrl);
   } else {
-    openWaitingRoom({ role: 'host', code: '----', deck: '', slot: -1 });
+    openWaitingRoom();
   }
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) openWaitingRoom({ role: 'host', code: '----', deck: '', slot: -1 });
+    if (BrowserWindow.getAllWindows().length === 0) openWaitingRoom();
   });
 });
 
@@ -241,7 +264,23 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-// ── IPC ───────────────────────────────────────────────────────────────────────
+// ── IPC: Manual create room ───────────────────────────────────────────────────
+ipcMain.on('waiting:create-room', (_event, { deckUrl }) => {
+  console.log('[Main] Manual create-room');
+  setupWs(deckUrl, 0, 'host', () => {
+    ws.send(JSON.stringify({ type: 'create-room', deckUrl, name: 'Host' }));
+  });
+});
+
+// ── IPC: Manual join room ─────────────────────────────────────────────────────
+ipcMain.on('waiting:join-room', (_event, { code, deckUrl }) => {
+  console.log('[Main] Manual join-room, code:', code);
+  setupWs(deckUrl, -1, 'join-manual', () => {
+    ws.send(JSON.stringify({ type: 'join-room', code: code.toUpperCase(), deckUrl }));
+  });
+});
+
+// ── IPC: Game flow ────────────────────────────────────────────────────────────
 ipcMain.on('waiting:start', () => sendToRelay({ type: 'start-game' }));
 
 ipcMain.on('waiting:launch', () => {
