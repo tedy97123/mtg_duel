@@ -1,0 +1,14 @@
+app = 'mtg-duel-bot-tedy'
+primary_region = 'ord'
+
+[build]
+
+# No HTTP service needed — bot only uses outbound connections
+# Keep one machine running at all times so the bot stays online
+[[vm]]
+  memory = '256mb'
+  cpu_kind = 'shared'
+  cpus = 1
+
+[env]
+  NODE_ENV = 'production'

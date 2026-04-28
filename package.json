@@ -1,6 +1,6 @@
 {
   "name": "moxfield",
-  "version": "1.0.0",
+  "version": "1.1.1",
   "description": "",
   "main": "src/main/main.js",
   "scripts": {
@@ -9,17 +9,28 @@
     "dist": "electron-builder --win",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "build": {
-    "appId": "com.mtgduel.app",
-    "productName": "MTG Duel",
-    "protocols": {
-      "name": "MTG Duel",
-      "schemes": ["mtgduel"]
-    },
-    "win": {
-      "target": "nsis"
-    }
+"build": {
+  "appId": "com.mtgduel.app",
+  "productName": "MTG Duel",
+  "files": [
+    "src/**/*",
+    "preload/**/*",
+    "lobby/**/*",
+    "shared/**/*",
+    "node_modules/**/*"
+  ],
+  "protocols": {
+    "name": "MTG Duel",
+    "schemes": ["mtgduel"]
   },
+  "win": {
+    "target": "nsis"
+  },
+  "mac": {
+    "target": "dmg",
+     "category": "public.app-category.games"
+  }
+},
   "keywords": [],
   "author": "",
   "license": "ISC",
