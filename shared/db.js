@@ -1,24 +1,24 @@
 // ── Load env FIRST before anything else ──────────────────────────────────────
 // ── Load env FIRST ────────────────────────────────────────────────────────────
+try {
+  // Try loading from package.json extraMetadata (production)
+  const pkgPaths = [
+    require('path').join(__dirname, '..', '..', 'package.json'),
+    require('path').join(process.resourcesPath || '', 'app', 'package.json'),
+    require('path').join(process.resourcesPath || '', 'app.asar', 'package.json'),
+  ];
+  for (const p of pkgPaths) {
     try {
-    // Try loading from package.json extraMetadata (production)
-    const pkgPaths = [
-        require('path').join(__dirname, '..', '..', 'package.json'),
-        require('path').join(process.resourcesPath || '', 'app', 'package.json'),
-        require('path').join(process.resourcesPath || '', 'app.asar', 'package.json'),
-    ];
-    for (const p of pkgPaths) {
-        try {
-        const pkg = require(p);
-        if (pkg.env) { Object.assign(process.env, pkg.env); break; }
-        } catch {}
-    }
+      const pkg = require(p);
+      if (pkg.env) { Object.assign(process.env, pkg.env); break; }
     } catch {}
+  }
+} catch {}
 
-    // Also try dotenv for dev
-    try {
-    require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
-    } catch {}
+// Also try dotenv for dev
+try {
+  require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
+} catch {}
 const { createClient } = require('@supabase/supabase-js');
 
 console.log('SUPABASE_URL:', process.env.SUPABASE_URL);

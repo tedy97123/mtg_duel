@@ -35,15 +35,16 @@ function playerList(room) {
   }));
 }
 
-// ── HTTP /launch redirect ─────────────────────────────────────────────────────
+// ── HTTP server ───────────────────────────────────────────────────────────────
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://localhost`);
 
+  // ── /launch ─────────────────────────────────────────────────────────────────
   if (url.pathname === '/launch') {
-    const role = url.searchParams.get('role') || 'join';
-    const code = (url.searchParams.get('code') || '').toUpperCase();
-    const deck = url.searchParams.get('deck') || '';
-    const slot = url.searchParams.get('slot') || '';
+    const role     = url.searchParams.get('role') || 'join';
+    const code     = (url.searchParams.get('code') || '').toUpperCase();
+    const deck     = url.searchParams.get('deck') || '';
+    const slot     = url.searchParams.get('slot') || '';
     const deepLink = `mtgduel://${role}/${code}?deck=${encodeURIComponent(deck)}&slot=${slot}`;
 
     res.writeHead(200, { 'Content-Type': 'text/html' });
@@ -69,11 +70,32 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // ── /auth/callback ───────────────────────────────────────────────────────────
   if (url.pathname === '/auth/callback') {
-    const code = url.searchParams.get('code');
+    const code     = url.searchParams.get('code');
     const deepLink = `mtgduel://auth/callback?code=${code}`;
     res.writeHead(302, { Location: deepLink });
     res.end();
+    return;
+  }
+
+  // ── /lobbies ─────────────────────────────────────────────────────────────────
+  if (url.pathname === '/lobbies') {
+    const list = [...rooms.entries()]
+      .filter(([, room]) => !room.started)
+      .map(([code, room]) => ({
+        code,
+        hostName:   room.names[0] || 'Host',
+        players:    room.names.filter(Boolean).length,
+        maxPlayers: MAX_PLAYERS,
+        isPublic:   room.isPublic !== false,
+      }));
+
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+    });
+    res.end(JSON.stringify(list));
     return;
   }
 
@@ -98,10 +120,11 @@ wss.on('connection', (ws) => {
     if (msg.type === 'create-room') {
       const code = generateCode();
       rooms.set(code, {
-        started: false,
-        players: new Array(MAX_PLAYERS).fill(null),
-        decks:   new Array(MAX_PLAYERS).fill(null),
-        names:   new Array(MAX_PLAYERS).fill(null),
+        started:  false,
+        isPublic: msg.isPublic !== false,
+        players:  new Array(MAX_PLAYERS).fill(null),
+        decks:    new Array(MAX_PLAYERS).fill(null),
+        names:    new Array(MAX_PLAYERS).fill(null),
       });
 
       const room = rooms.get(code);
@@ -110,21 +133,19 @@ wss.on('connection', (ws) => {
       room.names[0]   = msg.name || 'Host';
       roomCode    = code;
       playerIndex = 0;
-      ws._isBotPlaceholder = !!msg._isBot;
 
       send(ws, { type: 'room-created', code, maxPlayers: MAX_PLAYERS, playerIndex: 0, players: playerList(room) });
-      console.log(`Room ${code} created for ${msg.name}`);
+      console.log(`Room ${code} created for ${msg.name} (public: ${msg.isPublic !== false})`);
 
-    // ── join-room-bot (Discord bot reserves a guest slot) ─────────────────────
+    // ── join-room-bot ─────────────────────────────────────────────────────────
     } else if (msg.type === 'join-room-bot') {
       const code = (msg.code || '').toUpperCase();
       const room = rooms.get(code);
       if (!room)        { send(ws, { type: 'error', message: 'Room not found' }); return; }
       if (room.started) { send(ws, { type: 'error', message: 'Game already started' }); return; }
 
-      // Find first empty guest slot (skip 0 — always host)
       const slot = room.players.findIndex((p, i) => i > 0 && p === null);
-      if (slot === -1) { send(ws, { type: 'error', message: 'Room is full' }); return; }
+      if (slot === -1)  { send(ws, { type: 'error', message: 'Room is full' }); return; }
 
       room.players[slot] = ws;
       room.decks[slot]   = msg.deckUrl;
@@ -138,16 +159,15 @@ wss.on('connection', (ws) => {
       broadcast(room, { type: 'player-joined', players: list }, slot);
       console.log(`Bot reserved slot ${slot} for ${msg.name} in ${code}`);
 
-    // ── join-room (manual app join — finds first truly empty slot) ────────────
+    // ── join-room ─────────────────────────────────────────────────────────────
     } else if (msg.type === 'join-room') {
       const code = (msg.code || '').toUpperCase();
       const room = rooms.get(code);
       if (!room)        { send(ws, { type: 'error', message: 'Room not found' }); return; }
       if (room.started) { send(ws, { type: 'error', message: 'Game already started' }); return; }
 
-      // Find first truly empty slot (no WS and no name) — works for both manual and Discord flows
       const slot = room.players.findIndex((p, i) => i > 0 && !p && !room.names[i]);
-      if (slot === -1) { send(ws, { type: 'error', message: 'Room is full' }); return; }
+      if (slot === -1)  { send(ws, { type: 'error', message: 'Room is full' }); return; }
 
       room.players[slot] = ws;
       room.decks[slot]   = msg.deckUrl;
@@ -158,13 +178,13 @@ wss.on('connection', (ws) => {
       const list = playerList(room);
       send(ws, { type: 'room-joined', code, playerIndex: slot, maxPlayers: MAX_PLAYERS, players: list });
       broadcast(room, { type: 'player-joined', players: list }, slot);
-      console.log(`Player ${slot} (${msg.name}) joined ${code} manually`);
+      console.log(`Player ${slot} (${msg.name}) joined ${code}`);
 
     // ── attach-host ───────────────────────────────────────────────────────────
     } else if (msg.type === 'attach-host') {
       const code = (msg.code || '').toUpperCase();
       const room = rooms.get(code);
-      if (!room) { send(ws, { type: 'error', message: `Room ${code} not found` }); return; }
+      if (!room)        { send(ws, { type: 'error', message: `Room ${code} not found` }); return; }
       if (room.started) { send(ws, { type: 'error', message: 'Game already started' }); return; }
 
       if (room.players[0] && room.players[0] !== ws) {
@@ -187,8 +207,8 @@ wss.on('connection', (ws) => {
       const code = (msg.code || '').toUpperCase();
       const slot = parseInt(msg.slot);
       const room = rooms.get(code);
-      if (!room) { send(ws, { type: 'error', message: `Room ${code} not found` }); return; }
-      if (room.started) { send(ws, { type: 'error', message: 'Game already started' }); return; }
+      if (!room)                         { send(ws, { type: 'error', message: `Room ${code} not found` }); return; }
+      if (room.started)                  { send(ws, { type: 'error', message: 'Game already started' }); return; }
       if (slot < 1 || slot >= MAX_PLAYERS) { send(ws, { type: 'error', message: 'Invalid slot' }); return; }
 
       if (room.players[slot] && room.players[slot] !== ws) {

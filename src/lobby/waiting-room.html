@@ -410,6 +410,47 @@ body::after {
 }
 
 .host-hint.visible { display: block; color: rgba(232,69,69,0.7); }
+
+.toggle-btn {
+  flex: 1;
+  padding: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toggle-btn.active {
+  background: rgba(232,69,69,0.1);
+  border-color: rgba(232,69,69,0.4);
+  color: var(--accent);
+}
+
+.btn-secondary {
+  width: 100%;
+  padding: 13px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 8px;
+}
+
+.btn-secondary:hover {
+  border-color: rgba(255,255,255,0.2);
+  color: var(--text);
+}
+
 </style>
 </head>
 <body>
@@ -448,8 +489,15 @@ body::after {
         <label class="form-label" id="deckInputLabel">Your Deck URL</label>
         <input class="form-input" id="deckInput" type="text" placeholder="https://moxfield.com/decks/...">
       </div>
+      <div class="visibility-toggle" style="display:flex;gap:8px;margin-bottom:12px;">
+        <button class="toggle-btn active" id="togglePublic" onclick="setVisibility(true)">🌐 Public</button>
+        <button class="toggle-btn" id="togglePrivate" onclick="setVisibility(false)">🔒 Private</button>
+      </div>
 
       <button class="btn-primary" id="createBtn">Create Room</button>
+
+      <button class="btn-secondary" id="browsLobbiesBtn">Browse Open Lobbies →</button>
+
 
       <div class="or-divider">
         <div class="or-line"></div>
@@ -490,41 +538,48 @@ body::after {
           <div class="info-cell-val">4</div>
         </div>
       </div>
-
+      
       <div class="players-section">
         <div class="players-title">Challengers</div>
         <div id="playerGrid"></div>
       </div>
-
+      
       <div class="bottom-area">
         <div class="flavor-text" id="flavor">Waiting for players to join...</div>
         <button class="btn-begin" id="startBtn" disabled>Begin the Duel</button>
         <div class="host-hint" id="hostNote">You are the host — press Begin when everyone has joined</div>
       </div>
     </div>
-
+    
   </div>
 </div>
 
 <script>
-const bridge  = window.waitingRoomBridge;
-const params  = bridge.getParams();
-const { code, role, deck, decks, selectedDeckId } = params;
-const isHost          = role === 'host';
-const isDiscordLaunch = code && code !== '----';
-const MAX   = 4;
-
-let myIndex     = isHost ? 0 : -1;
-let playerState = Array(MAX).fill(null);
-let activeDeckUrl = deck || '';
-let activeDeckId  = selectedDeckId || null;
-
-// ── Deck dropdown setup ───────────────────────────────────────────────────────
-if (decks && decks.length > 0) {
-  document.getElementById('deckDropdownField').style.display = 'block';
-  document.getElementById('deckOrLabel').style.display      = 'flex';
-  document.getElementById('deckInputLabel').textContent      = 'Or enter manually';
-
+  const bridge  = window.waitingRoomBridge;
+  const params  = bridge.getParams();
+  const { code, role, deck, decks, selectedDeckId, prefilledCode } = params;
+  const isHost          = role === 'host';
+  const isDiscordLaunch = code && code !== '----';
+  const MAX   = 4;
+  
+  let myIndex     = isHost ? 0 : -1;
+  let playerState = Array(MAX).fill(null);
+  let activeDeckUrl = deck || '';
+  let activeDeckId  = selectedDeckId || null;
+  
+  let isPublic = true;
+  
+  function setVisibility(pub) {
+    isPublic = pub;
+    document.getElementById('togglePublic').classList.toggle('active', pub);
+    document.getElementById('togglePrivate').classList.toggle('active', !pub);
+  }
+  // ── Deck dropdown setup ───────────────────────────────────────────────────────
+  if (decks && decks.length > 0) {
+    document.getElementById('deckDropdownField').style.display = 'block';
+    document.getElementById('deckOrLabel').style.display      = 'flex';
+    document.getElementById('deckInputLabel').textContent      = 'Or enter manually';
+    
   const dropdown = document.getElementById('deckDropdown');
   decks.forEach(d => {
     const opt = document.createElement('option');
@@ -566,6 +621,10 @@ if (decks && decks.length > 0) {
   document.getElementById('deckInput').value = deck;
 }
 
+if (prefilledCode) {
+  document.getElementById('codeInput').value = prefilledCode;
+}
+
 // ── Panel switching ───────────────────────────────────────────────────────────
 if (isDiscordLaunch) {
   showActive(code);
@@ -601,18 +660,22 @@ function getActiveDeck() {
 
 // ── Idle actions ──────────────────────────────────────────────────────────────
 document.getElementById('createBtn').addEventListener('click', () => {
+    console.log('[CreateBtn] clicked - stack:', new Error().stack);
   const chosen = getActiveDeck();
+    console.log('chosen:', chosen);               // ← add
+
   if (!chosen) { alert('Select or enter your deck first'); return; }
   document.getElementById('createBtn').disabled = true;
   document.getElementById('createBtn').textContent = 'Connecting...';
   myIndex = 0;
   playerState[0] = { connected:true, name:'YOU (HOST)', index:0 };
-  bridge.createRoom(chosen.url, chosen.id);
+  bridge.createRoom(chosen.url, chosen.id, isPublic);
 });
 
 document.getElementById('joinBtn').addEventListener('click', () => {
   const chosen  = getActiveDeck();
   const codeVal = document.getElementById('codeInput').value.trim().toUpperCase();
+  console.log('[Join] codeVal:', codeVal, 'chosen:', chosen);
   if (!chosen) { alert('Select or enter your deck first'); return; }
   if (codeVal.length !== 4) { alert('Enter a 4-character room code'); return; }
   document.getElementById('joinBtn').disabled = true;
@@ -733,6 +796,22 @@ document.getElementById('startBtn').addEventListener('click', () => {
   document.getElementById('startBtn').textContent = 'Starting...';
   bridge.startGame();
 });
+
+document.getElementById('browsLobbiesBtn').addEventListener('click', () => {
+  bridge.browseLobbies();
+});
+
+bridge.onPrefilledCode(({ code }) => {
+  document.getElementById('codeInput').value = code;
+  // Auto-join immediately
+  const chosen = getActiveDeck();
+  if (!chosen) {
+    alert('Select or enter your deck first');
+    return;
+  }
+  bridge.joinRoom(code, chosen.url, chosen.id);
+});
+
 </script>
 </body>
 </html>
