@@ -12,9 +12,14 @@ contextBridge.exposeInMainWorld('waitingRoomBridge', {
     ipcRenderer.on('waiting:status', (_event, data) => callback(data));
   },
 
-  createRoom(deckUrl, deckId) {
-    ipcRenderer.send('waiting:create-room', { deckUrl, deckId });
+  onPrefilledCode(callback) {
+    ipcRenderer.on('waiting:prefill-code', (_event, data) => callback(data));
   },
+
+  createRoom(deckUrl, deckId, isPublic) {
+    ipcRenderer.send('waiting:create-room', { deckUrl, deckId, isPublic });
+  },
+
   joinRoom(code, deckUrl, deckId) {
     ipcRenderer.send('waiting:join-room', { code, deckUrl, deckId });
   },
@@ -26,7 +31,12 @@ contextBridge.exposeInMainWorld('waitingRoomBridge', {
   startGame() {
     ipcRenderer.send('waiting:start');
   },
+
   launchGame() {
     ipcRenderer.send('waiting:launch');
+  },
+
+  browseLobbies() {
+    ipcRenderer.send('waiting:browse-lobbies');
   },
 });

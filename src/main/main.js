@@ -25,6 +25,7 @@ let ws            = null;
 let selectedDeckUrl  = null;
 let selectedDeckId   = null;
 let selectedDeckName = null;
+let lobbiesWindow = null;
 
 // ── Protocol registration ─────────────────────────────────────────────────────
 if (process.defaultApp) {
@@ -36,8 +37,8 @@ if (process.defaultApp) {
 }
 
 const gotTheLock = app.requestSingleInstanceLock();
-if (!gotTheLock && !process.argv.includes('')) {
-  // app.quit();
+if (!gotTheLock && !process.argv.includes('--multi')) {
+  app.quit();
 } else {
   app.on('second-instance', (_event, commandLine) => {
     const url = commandLine.find(arg => arg.startsWith('mtgduel://'));
@@ -163,13 +164,36 @@ function closeProfile() {
   if (profileWindow) { profileWindow.close(); profileWindow = null; }
 }
 
-async function openWaitingRoom(params = {}) {
-  if (waitingWindow) { waitingWindow.close(); waitingWindow = null; }
-  const code = params.code || '----';
-  const role = params.role || 'host';
-  const deck = params.deck || selectedDeckUrl || '';
+function openLobbies() {
+  if (lobbiesWindow) { lobbiesWindow.focus(); return; }
+  lobbiesWindow = new BrowserWindow({
+    width: 700,
+    height: 800,
+    title: 'MTG Duel — Open Lobbies',
+    resizable: false,
+    webPreferences: {
+      preload: path.join(__dirname, '..', 'preload', 'lobbies-preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+  lobbiesWindow.loadFile(path.join(__dirname, '..', 'lobby', 'lobbies.html'));
+  lobbiesWindow.webContents.openDevTools(); // ← add this
+  lobbiesWindow.on('closed', () => { lobbiesWindow = null; });
+}
 
-  // Fetch deck list for dropdown if logged in
+function closeLobbies() {
+  if (lobbiesWindow) { lobbiesWindow.close(); lobbiesWindow = null; }
+}
+
+async function openWaitingRoom(params = {}) {
+    const oldWindow = waitingWindow;  // ← save reference
+  if (waitingWindow) { waitingWindow.close(); waitingWindow = null; }
+  const code         = params.code || '----';
+  const role         = params.role || 'host';
+  const deck         = params.deck || selectedDeckUrl || '';
+  const prefilledCode = params.prefilledCode || '';  
+
   let decks = [];
   const user = auth.getUser();
   if (user) {
@@ -192,12 +216,16 @@ async function openWaitingRoom(params = {}) {
           deck,
           decks,
           selectedDeckId,
+          prefilledCode,   
         })}`,
       ],
     },
   });
-  waitingWindow.loadFile(path.join(__dirname, '..', 'lobby', 'waiting-room.html'));
-  waitingWindow.on('closed', () => { waitingWindow = null; });
+
+    waitingWindow.loadFile(path.join(__dirname, '..', 'lobby', 'waiting-room.html'));
+waitingWindow.webContents.openDevTools(); // ← add this
+waitingWindow.on('closed', () => { waitingWindow = null; });
+    if (oldWindow) { oldWindow.close(); }
   if (params.deck) connectDiscord(params);
 }
 
@@ -466,19 +494,6 @@ ipcMain.on('profile:play', async () => {
   }
 });
 // ── IPC: Manual lobby ─────────────────────────────────────────────────────────
-ipcMain.on('waiting:create-room', (_event, { deckUrl, deckId }) => {
-  const deck = deckUrl || selectedDeckUrl;
-  if (!deck) return;
-  selectedDeckUrl = deck;
-  if (deckId) selectedDeckId = deckId;
-  setupWs(deck, 0, 'host', () => {
-    ws.send(JSON.stringify({
-      type: 'create-room',
-      deckUrl: deck,
-      name: auth.getUser()?.username || 'Host',
-    }));
-  });
-});
 
 ipcMain.on('waiting:join-room', (_event, { code, deckUrl, deckId }) => {
   const deck = deckUrl || selectedDeckUrl;
@@ -493,6 +508,53 @@ ipcMain.on('waiting:join-room', (_event, { code, deckUrl, deckId }) => {
       name: auth.getUser()?.username || 'Guest',
     }));
   });
+});
+
+// waiting room public toggle
+ipcMain.on('waiting:create-room', (_event, { deckUrl, deckId, isPublic }) => {
+  const deck = deckUrl || selectedDeckUrl;
+    console.log('[Create Room] deck:', deck, 'isPublic:', isPublic);  // ← add this
+  if (!deck){
+    console.log('[Create Room] NO DECK — aborting');  // ← add this
+    return;
+  }
+  selectedDeckUrl = deck;
+  if (deckId) selectedDeckId = deckId;
+  setupWs(deck, 0, 'host', () => {
+    ws.send(JSON.stringify({
+      type: 'create-room',
+      deckUrl: deck,
+      name: auth.getUser()?.username || 'Host',
+      isPublic: isPublic !== false,
+    }));
+  });
+});
+
+
+// ── IPC: Lobbies ──────────────────────────────────────────────────────────────
+ipcMain.on('lobbies:join', async (_event, { code }) => {
+  console.log('[Lobbies] Join clicked, code:', code);
+  try {
+    if (waitingWindow) {
+      // Send code to existing waiting room instead of opening a new one
+      waitingWindow.webContents.send('waiting:prefill-code', { code });
+      // closeLobbies();
+      waitingWindow.focus();
+    } else {
+      await openWaitingRoom({ prefilledCode: code });
+      closeLobbies();
+    }
+  } catch (err) {
+    console.error('[Lobbies] Failed:', err.message);
+  }
+});
+
+ipcMain.on('lobbies:back', () => {
+  closeLobbies();
+});
+
+ipcMain.on('waiting:browse-lobbies', () => {
+  openLobbies();
 });
 
 ipcMain.on('waiting:leave-room', () => {
