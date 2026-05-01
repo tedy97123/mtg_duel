@@ -271,9 +271,7 @@ function handleRelayMessage(msg) {
   } else if (msg.type === 'game-start') {
     ws._players = msg.players;
     ws._opponentPlayers = msg.players.filter((p, i) => p && p.connected && i !== ws._myIndex);
-    console.log('[Game-start] players:', JSON.stringify(msg.players));
-console.log('[Game-start] myIndex:', ws._myIndex);
-console.log('[Game-start] opponents:', JSON.stringify(ws._opponentPlayers));
+ 
 
     const user = auth.getUser();
     if (user) {
@@ -425,8 +423,11 @@ ipcMain.handle('profile:get', async () => {
 
 ipcMain.handle('profile:add-deck', async (_event, { name, url }) => {
   const user = auth.getUser();
+  let complete_deck_url = `https://moxfield.com/decks/${url}/goldfish`;
+  
+  console.log("[Dekcs] COMPLETE URL:", complete_deck_url);
   if (!user) return [];
-  await db.addDeck(user.id, name, url);
+  await db.addDeck(user.id, name, complete_deck_url);
   return db.getDecks(user.id);
 });
 
