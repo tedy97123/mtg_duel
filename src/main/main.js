@@ -222,9 +222,8 @@ async function openWaitingRoom(params = {}) {
     },
   });
 
-    waitingWindow.loadFile(path.join(__dirname, '..', 'lobby', 'waiting-room.html'));
-waitingWindow.webContents.openDevTools(); // ← add this
-waitingWindow.on('closed', () => { waitingWindow = null; });
+  waitingWindow.loadFile(path.join(__dirname, '..', 'lobby', 'waiting-room.html')); 
+  waitingWindow.on('closed', () => { waitingWindow = null; });
     if (oldWindow) { oldWindow.close(); }
   if (params.deck) connectDiscord(params);
 }
