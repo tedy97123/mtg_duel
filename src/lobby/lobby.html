@@ -177,6 +177,7 @@
       const val = deckInput.value.trim();
       if (!val) return null;
       localStorage.setItem(DECK_STORAGE_KEY, val);
+      console.log("[Deck Input] User entered:", val);
       if (val.startsWith('http')) return val;
       return `https://www.moxfield.com/decks/${val}/goldfish`;
     }

@@ -400,6 +400,31 @@ body::after {
 .btn-begin:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 8px 30px rgba(232,69,69,0.4); }
 .btn-begin:disabled { opacity:0.3; cursor:not-allowed; background:var(--muted); box-shadow:none; }
 
+.btn-leave {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+flex-direction: row ;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.btn-leave:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #fff;
+  transform: translateX(-2px);
+}
+
 .host-hint {
   text-align: center;
   font-size: 10px;
@@ -454,10 +479,13 @@ body::after {
 </style>
 </head>
 <body>
-<div class="container">
-  <div class="logo">
+  
+  <div class="container">
+    <div class="logo">
+    <button class="btn-leave" id="leaveBtn"> ← </button>
     <div class="logo-mark">
-      <div class="logo-icon">⚔</div>
+       <div class="logo-icon">⚔</div>
+           
       MTG DUEL
     </div>
     <div class="logo-sub">Waiting Room</div>
@@ -522,7 +550,7 @@ body::after {
         <div class="room-code-label">Room Code</div>
         <div class="room-code" id="roomCode">----</div>
         <div class="room-code-sub">Share this code with your opponents</div>
-      </div>
+       </div>
 
       <div class="info-bar">
         <div class="info-cell">
@@ -547,6 +575,8 @@ body::after {
       <div class="bottom-area">
         <div class="flavor-text" id="flavor">Waiting for players to join...</div>
         <button class="btn-begin" id="startBtn" disabled>Begin the Duel</button>
+ 
+
         <div class="host-hint" id="hostNote">You are the host — press Begin when everyone has joined</div>
       </div>
     </div>
@@ -671,6 +701,7 @@ document.getElementById('createBtn').addEventListener('click', () => {
   playerState[0] = { connected:true, name:'YOU (HOST)', index:0 };
   bridge.createRoom(chosen.url, chosen.id, isPublic);
 });
+
 
 document.getElementById('joinBtn').addEventListener('click', () => {
   const chosen  = getActiveDeck();
@@ -797,19 +828,30 @@ document.getElementById('startBtn').addEventListener('click', () => {
   bridge.startGame();
 });
 
+
 document.getElementById('browsLobbiesBtn').addEventListener('click', () => {
   bridge.browseLobbies();
 });
 
 bridge.onPrefilledCode(({ code }) => {
   document.getElementById('codeInput').value = code;
-  // Auto-join immediately
   const chosen = getActiveDeck();
   if (!chosen) {
     alert('Select or enter your deck first');
     return;
   }
   bridge.joinRoom(code, chosen.url, chosen.id);
+});
+
+
+document.getElementById('leaveBtn').addEventListener('click', () => {
+  bridge.leaveRoom();
+  showIdle();
+  playerState = Array(MAX).fill(null);
+  myIndex = -1;
+  refresh();
+  document.getElementById('flavor').classList.remove('error', 'ready');
+  document.getElementById('flavor').textContent = 'Waiting for players to join...';
 });
 
 </script>

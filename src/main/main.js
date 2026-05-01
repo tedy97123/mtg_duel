@@ -299,9 +299,7 @@ function handleRelayMessage(msg) {
   } else if (msg.type === 'game-start') {
     ws._players = msg.players;
     ws._opponentPlayers = msg.players.filter((p, i) => p && p.connected && i !== ws._myIndex);
-    console.log('[Game-start] players:', JSON.stringify(msg.players));
-console.log('[Game-start] myIndex:', ws._myIndex);
-console.log('[Game-start] opponents:', JSON.stringify(ws._opponentPlayers));
+ 
 
     const user = auth.getUser();
     if (user) {
@@ -365,6 +363,19 @@ function createGameWindow(preload, partition, url, x, y, width, height, label) {
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.loadURL(url).catch(err => console.error(`Failed to load ${label}:`, err));
   return win;
+}
+
+
+function closeWaitingRoom() {
+  // function to ret urn to profile page if user is logged in, or login page if not
+  const user = auth.getUser();
+  if (user) {
+    if (waitingWindow) { waitingWindow.close(); waitingWindow = null; }
+    openProfile();
+  } else {
+    if (waitingWindow) { waitingWindow.close(); waitingWindow = null; }
+    openLogin();
+  }
 }
 
 function startGame(myDeckUrl, opponentPlayers) {
@@ -453,8 +464,10 @@ ipcMain.handle('profile:get', async () => {
 
 ipcMain.handle('profile:add-deck', async (_event, { name, url }) => {
   const user = auth.getUser();
+  // Includes full url to playtest page so users arrrive on the board instead of the deck view.
+  let complete_deck_url = `https://moxfield.com/decks/${url}/goldfish`;
   if (!user) return [];
-  await db.addDeck(user.id, name, url);
+  await db.addDeck(user.id, name, complete_deck_url);
   return db.getDecks(user.id);
 });
 
@@ -544,6 +557,17 @@ ipcMain.on('waiting:browse-lobbies', () => {
   openLobbies();
 });
 
+ipcMain.on('waiting:leave-room', () => {
+  // When clicking leave room button it navigate user back to profile page, but if user joined rooom via deep link it will navigate them back to user login page
+  const user = auth.getUser();
+  if (user) {
+    closeWaitingRoom();
+    openProfile();
+  } else {
+    closeWaitingRoom();
+    openLogin();
+  }
+})
 
 // ── IPC: Game flow ────────────────────────────────────────────────────────────
 ipcMain.on('waiting:start', () => sendToRelay({ type: 'start-game' }));
