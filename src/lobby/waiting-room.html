@@ -3,297 +3,656 @@
 <head>
 <meta charset="UTF-8">
 <title>MTG Duel — Waiting Room</title>
-<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-*{margin:0;padding:0;box-sizing:border-box;image-rendering:pixelated;}
-body{font-family:'Share Tech Mono',monospace;background:#d8d0bc;min-height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden;}
-body::before{content:'';position:fixed;inset:0;pointer-events:none;background-image:radial-gradient(circle,rgba(0,0,0,0.15) 1px,transparent 1px);background-size:3px 3px;}
-body::after{content:'';position:fixed;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,0.04) 0px,rgba(0,0,0,0.04) 1px,transparent 1px,transparent 3px);}
-.card{position:relative;width:500px;background:#e8e0cc;box-shadow:4px 4px 0 #8a7a60,0 0 0 2px #5a4a30,inset 0 0 0 2px #f0e8d4,inset 0 0 0 4px #5a4a30;animation:settle 0.5s ease both;}
-@keyframes settle{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-.card::before{content:'';position:absolute;top:-2px;left:-2px;right:-2px;bottom:-2px;pointer-events:none;z-index:10;background:linear-gradient(135deg,#d8d0bc 6px,transparent 6px) top left,linear-gradient(225deg,#d8d0bc 6px,transparent 6px) top right,linear-gradient(315deg,#d8d0bc 6px,transparent 6px) bottom right,linear-gradient(45deg,#d8d0bc 6px,transparent 6px) bottom left;background-size:8px 8px;background-repeat:no-repeat;}
-.top-bar{background:#c84800;height:6px;box-shadow:inset -2px 0 0 #8a2800,inset 0 -2px 0 #8a2800;}
-.bot-bar{background:#c84800;height:6px;box-shadow:inset -2px 0 0 #8a2800,inset 0 2px 0 #e85000;}
-.header{padding:20px 24px 14px;text-align:center;border-bottom:2px solid #5a4a30;position:relative;}
-.header::after{content:'';position:absolute;bottom:-4px;left:0;right:0;height:2px;background:#a09070;}
-.eyebrow{font-size:9px;letter-spacing:4px;color:#8a7a60;text-transform:uppercase;margin-bottom:12px;}
-.title-main{font-family:'VT323',monospace;font-size:52px;color:#1a1208;line-height:1;text-shadow:3px 3px 0 #8a7a60;letter-spacing:2px;}
-.title-sub{font-size:9px;letter-spacing:5px;text-transform:uppercase;color:#8a7a60;margin-top:6px;}
-.pixel-botanical{display:flex;align-items:center;justify-content:center;padding:10px 24px;border-bottom:2px solid #5a4a30;}
-
-/* ── IDLE LOBBY ── */
-#idlePanel{padding:20px 24px;}
-.idle-label{font-size:8px;letter-spacing:4px;text-transform:uppercase;color:#8a7a60;margin-bottom:6px;display:block;}
-.idle-input{
-  width:100%;padding:9px 12px;
-  border:2px solid #a09070;background:#f0ead8;
-  color:#1a1208;font-family:'Share Tech Mono',monospace;font-size:11px;
-  letter-spacing:1px;outline:none;
-  transition:border-color 0.2s;
-}
-.idle-input:focus{border-color:#c84800;}
-.idle-input::placeholder{color:#b0a080;}
-.idle-field{margin-bottom:16px;}
-.idle-actions{display:flex;gap:10px;margin-top:4px;}
-.idle-actions .btn{
-  flex:1;padding:10px;
-  border:2px solid #5a4a30;background:#e8e0cc;
-  color:#5a4a30;font-family:'Share Tech Mono',monospace;
-  font-size:9px;letter-spacing:3px;text-transform:uppercase;
-  cursor:pointer;transition:all 0.1s steps(1);
-  box-shadow:2px 2px 0 #5a4a30;
-}
-.idle-actions .btn:hover{background:#5a4a30;color:#e8e0cc;box-shadow:1px 1px 0 #5a4a30;transform:translate(1px,1px);}
-.idle-actions .btn:active{transform:translate(2px,2px);box-shadow:none;}
-.idle-actions .btn.primary{border-color:#c84800;color:#c84800;box-shadow:2px 2px 0 #8a2800;}
-.idle-actions .btn.primary:hover{background:#c84800;color:#f0e8d4;box-shadow:1px 1px 0 #8a2800;}
-
-.join-row{display:flex;gap:8px;}
-.join-row .idle-input{flex:1;letter-spacing:4px;text-align:center;font-size:18px;text-transform:uppercase;}
-.join-row .btn{flex:0 0 auto;padding:9px 14px;}
-
-.idle-divider{display:flex;align-items:center;gap:10px;margin:16px 0;}
-.idle-divider-line{flex:1;height:1px;background:#c0b098;}
-.idle-divider-text{font-size:8px;letter-spacing:3px;color:#b0a080;text-transform:uppercase;}
-
-.idle-discord-note{
-  text-align:center;padding:10px 0 0;
-  font-size:9px;letter-spacing:2px;color:#b0a080;text-transform:uppercase;
+:root {
+  --bg:      #0a0a0f;
+  --surface: #111118;
+  --card:    #16161f;
+  --border:  #1e1e2e;
+  --accent:  #e84545;
+  --accent2: #ff6b35;
+  --text:    #e8e8f0;
+  --muted:   #5a5a7a;
+  --green:   #22c55e;
+  --green-bg:#0f2a1a;
 }
 
-/* ── ACTIVE ROOM ── */
-#activePanel{display:none;}
-.code-section{padding:16px 24px 12px;text-align:center;border-bottom:2px solid #5a4a30;position:relative;background:#e0d8c4;}
-.code-section::before{content:'';position:absolute;inset:0;pointer-events:none;background-image:radial-gradient(circle,rgba(0,0,0,0.08) 1px,transparent 1px);background-size:4px 4px;}
-.code-label{font-size:9px;letter-spacing:4px;text-transform:uppercase;color:#8a7a60;margin-bottom:8px;position:relative;}
-.code-val{font-family:'VT323',monospace;font-size:64px;letter-spacing:8px;text-indent:8px;color:#1a1208;line-height:1;text-shadow:3px 3px 0 #8a7a60;position:relative;}
-.code-note{font-size:9px;color:#8a7a60;margin-top:6px;letter-spacing:2px;position:relative;}
-.info-strip{display:flex;border-bottom:2px solid #5a4a30;}
-.info-cell{flex:1;padding:8px 12px;text-align:center;border-right:2px solid #5a4a30;}
-.info-cell:last-child{border-right:none;}
-.info-label{font-size:8px;letter-spacing:3px;text-transform:uppercase;color:#8a7a60;margin-bottom:2px;}
-.info-val{font-family:'VT323',monospace;font-size:22px;color:#1a1208;line-height:1;letter-spacing:1px;}
-.section-head{padding:8px 24px 4px;font-size:8px;letter-spacing:4px;text-transform:uppercase;color:#8a7a60;border-bottom:1px solid #c0b098;}
-.players{padding:0 24px;}
-.player{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px dashed #c0b098;transition:all 0.3s;}
-.player:last-child{border-bottom:none;}
-.player-idx{width:22px;height:22px;border:2px solid #c0b098;display:flex;align-items:center;justify-content:center;font-family:'VT323',monospace;font-size:16px;color:#c0b098;flex-shrink:0;transition:all 0.3s;}
-.player.you .player-idx{border-color:#c84800;color:#c84800;background:rgba(200,72,0,0.08);}
-.player.joined .player-idx{border-color:#2a6020;color:#2a6020;background:rgba(42,96,32,0.08);}
-.player-info{flex:1;}
-.player-name{font-family:'VT323',monospace;font-size:20px;color:#b0a080;line-height:1.1;letter-spacing:1px;transition:color 0.3s;}
-.player-name.active{color:#1a1208;}
-.player-status{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#c0b098;margin-top:1px;transition:color 0.3s;}
-.player-status.ok{color:#2a6020;}
-.player-status.wait{animation:wait-blink 1.5s steps(1) infinite;}
-@keyframes wait-blink{0%,49%{opacity:1}50%,100%{opacity:0.3}}
-.player-badge{font-size:8px;letter-spacing:2px;text-transform:uppercase;border:1.5px solid #c0b098;color:#8a7a60;padding:2px 6px;white-space:nowrap;transition:all 0.3s;}
-.player.you .player-badge{border-color:#c84800;color:#c84800;}
-.player.joined .player-badge{border-color:#2a6020;color:#2a6020;}
-.flavor{padding:10px 24px 12px;font-size:10px;letter-spacing:1px;color:#8a7a60;text-align:center;line-height:1.8;border-top:2px solid #5a4a30;font-style:italic;transition:color 0.3s;}
-.flavor.ready{color:#2a6020;font-style:normal;}
-.flavor.error{color:#c84800;font-style:normal;}
-.btn-wrap{padding:0 24px 16px;}
-.btn-start{width:100%;padding:11px;border:2px solid #c0b098;background:#ddd5c0;color:#a09070;font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:4px;text-transform:uppercase;cursor:pointer;transition:all 0.1s steps(1);box-shadow:2px 2px 0 #a09070;}
-.btn-start:not(:disabled){border-color:#c84800;color:#c84800;background:#e8dcc8;box-shadow:3px 3px 0 #8a2800;}
-.btn-start:not(:disabled):hover{background:#c84800;color:#f0e8d4;box-shadow:1px 1px 0 #8a2800;transform:translate(2px,2px);}
-.btn-start:not(:disabled):active{transform:translate(3px,3px);box-shadow:none;}
-.btn-start:disabled{cursor:not-allowed;}
-.host-note{text-align:center;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:#c84800;padding:0 24px 8px;display:none;}
-.host-note.visible{display:block;}
-.colophon{border-top:2px solid #5a4a30;padding:8px 24px 10px;display:flex;align-items:center;justify-content:space-between;background:#ddd5c0;}
-.col-left{font-size:8px;letter-spacing:2px;color:#8a7a60;text-transform:uppercase;}
-.col-right{font-family:'VT323',monospace;font-size:16px;color:#8a7a60;letter-spacing:1px;}
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'DM Mono', monospace;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 50% 50% at 20% 50%, rgba(232,69,69,0.07) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 40% at 80% 50%, rgba(255,107,53,0.04) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+.container {
+  position: relative;
+  z-index: 1;
+  width: 520px;
+  animation: fadeUp 0.5s cubic-bezier(0.16,1,0.3,1) both;
+}
+
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(20px); }
+  to   { opacity:1; transform:none; }
+}
+
+/* ── Logo ── */
+.logo {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.logo-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Syne', sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.logo-icon {
+  width: 36px; height: 36px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  box-shadow: 0 0 20px rgba(232,69,69,0.3);
+}
+
+.logo-sub {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-top: 6px;
+}
+
+/* ── Card ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.03) inset,
+    0 40px 80px rgba(0,0,0,0.6);
+}
+
+/* ── IDLE PANEL ── */
+#idlePanel { padding: 32px; }
+
+.idle-section-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.form-field { margin-bottom: 16px; }
+
+.form-label {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.form-input {
+  width: 100%;
+  padding: 13px 16px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.form-input:focus { border-color: rgba(232,69,69,0.5); }
+.form-input::placeholder { color: var(--muted); }
+
+.form-select {
+  width: 100%;
+  padding: 13px 16px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M0 0l6 8 6-8z' fill='%235a5a7a'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  transition: border-color 0.2s;
+}
+
+.form-select:focus { border-color: rgba(232,69,69,0.5); }
+
+.form-select option { background: #16161f; }
+
+.deck-selected-badge {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: var(--green-bg);
+  border: 1px solid rgba(34,197,94,0.2);
+  border-radius: 8px;
+  font-size: 11px;
+  color: var(--green);
+}
+
+.deck-selected-badge.visible { display: flex; }
+.deck-selected-dot { width:6px; height:6px; border-radius:50%; background:var(--green); }
+
+.or-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.or-line { flex:1; height:1px; background:var(--border); }
+.or-text  { font-size:10px; color:var(--muted); letter-spacing:2px; text-transform:uppercase; }
+
+.btn-primary {
+  width: 100%;
+  padding: 15px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 20px rgba(232,69,69,0.3);
+  margin-bottom: 12px;
+}
+
+.btn-primary:hover { transform:translateY(-1px); box-shadow:0 8px 30px rgba(232,69,69,0.4); }
+.btn-primary:active { transform:none; }
+.btn-primary:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+
+.join-row { display:flex; gap:10px; }
+.join-row .form-input { flex:1; text-align:center; letter-spacing:4px; font-size:18px; text-transform:uppercase; }
+
+.btn-join {
+  padding: 13px 20px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-join:hover { background:rgba(255,255,255,0.1); border-color:rgba(255,255,255,0.2); }
+.btn-join:disabled { opacity:0.5; cursor:not-allowed; }
+
+.discord-note {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+
+/* ── ACTIVE PANEL ── */
+#activePanel { display: none; }
+
+.room-code-section {
+  padding: 32px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+  background: rgba(0,0,0,0.2);
+}
+
+.room-code-label {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.room-code {
+  font-family: 'Syne', sans-serif;
+  font-size: 64px;
+  font-weight: 800;
+  letter-spacing: 12px;
+  color: var(--text);
+  line-height: 1;
+  text-indent: 12px;
+}
+
+.room-code-sub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 10px;
+  letter-spacing: 1px;
+}
+
+/* Info bar */
+.info-bar {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+
+.info-cell {
+  flex: 1;
+  padding: 16px;
+  text-align: center;
+  border-right: 1px solid var(--border);
+}
+
+.info-cell:last-child { border-right: none; }
+.info-cell-label { font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
+.info-cell-val   { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; }
+
+/* Player list */
+.players-section { padding: 16px 24px; }
+
+.players-title {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.player-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  margin-bottom: 6px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid transparent;
+  transition: all 0.2s;
+}
+
+.player-row:last-child { margin-bottom: 0; }
+.player-row.you   { border-color: rgba(232,69,69,0.2); background: rgba(232,69,69,0.05); }
+.player-row.joined{ border-color: rgba(34,197,94,0.15); background: rgba(34,197,94,0.04); }
+
+.player-num {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--muted);
+  flex-shrink: 0;
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+}
+
+.player-row.you    .player-num { background:rgba(232,69,69,0.15); color:var(--accent); }
+.player-row.joined .player-num { background:rgba(34,197,94,0.15); color:var(--green); }
+
+.player-info { flex: 1; }
+.player-name { font-size: 14px; font-weight: 500; color: var(--muted); }
+.player-name.active { color: var(--text); }
+.player-status { font-size: 10px; color: var(--muted); margin-top: 2px; letter-spacing: 1px; }
+.player-status.ok { color: var(--green); }
+.player-status.wait { animation: blink 1.5s steps(1) infinite; }
+@keyframes blink { 0%,49%{opacity:1} 50%,100%{opacity:0.4} }
+
+.player-badge {
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.player-row.you    .player-badge { border-color:rgba(232,69,69,0.3); color:var(--accent); }
+.player-row.joined .player-badge { border-color:rgba(34,197,94,0.3); color:var(--green); }
+
+/* Bottom area */
+.bottom-area { padding: 20px 24px; border-top: 1px solid var(--border); }
+
+.flavor-text {
+  text-align: center;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  margin-bottom: 16px;
+  font-style: italic;
+  min-height: 16px;
+}
+
+.flavor-text.error { color: var(--accent); font-style: normal; }
+.flavor-text.ready { color: var(--green);  font-style: normal; }
+
+.btn-begin {
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border: none;
+  border-radius: 14px;
+  color: #fff;
+  font-family: 'DM Mono', monospace;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 20px rgba(232,69,69,0.3);
+}
+
+.btn-begin:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 8px 30px rgba(232,69,69,0.4); }
+.btn-begin:disabled { opacity:0.3; cursor:not-allowed; background:var(--muted); box-shadow:none; }
+
+.host-hint {
+  text-align: center;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  margin-top: 10px;
+  display: none;
+}
+
+.host-hint.visible { display: block; color: rgba(232,69,69,0.7); }
 </style>
 </head>
 <body>
-<div class="card">
-  <div class="top-bar"></div>
-
-  <div class="header">
-    <div class="eyebrow">Networked Playtester · v0.4</div>
-    <div class="title-main">MTG DUEL</div>
-    <div class="title-sub">Waiting Room</div>
+<div class="container">
+  <div class="logo">
+    <div class="logo-mark">
+      <div class="logo-icon">⚔</div>
+      MTG DUEL
+    </div>
+    <div class="logo-sub">Waiting Room</div>
   </div>
 
-  <div class="pixel-botanical"><canvas id="botanical" width="452" height="36"></canvas></div>
+  <div class="card">
 
-  <!-- ── IDLE PANEL ── -->
-  <div id="idlePanel">
-    <div class="idle-field">
-      <span class="idle-label">Your Deck (Moxfield URL or ID)</span>
-      <input class="idle-input" id="deckInput" type="text" placeholder="https://moxfield.com/decks/...">
+    <!-- ── IDLE PANEL ── -->
+    <div id="idlePanel">
+
+      <div id="deckDropdownField" style="display:none;" class="form-field">
+        <label class="form-label">Select Your Deck</label>
+        <select class="form-select" id="deckDropdown">
+          <option value="">— choose a deck —</option>
+        </select>
+        <div class="deck-selected-badge" id="selectedDeckBadge">
+          <div class="deck-selected-dot"></div>
+          <span id="selectedDeckName"></span>
+        </div>
+      </div>
+
+      <div class="or-divider" id="deckOrLabel" style="display:none;">
+        <div class="or-line"></div>
+        <div class="or-text">or enter manually</div>
+        <div class="or-line"></div>
+      </div>
+
+      <div class="form-field">
+        <label class="form-label" id="deckInputLabel">Your Deck URL</label>
+        <input class="form-input" id="deckInput" type="text" placeholder="https://moxfield.com/decks/...">
+      </div>
+
+      <button class="btn-primary" id="createBtn">Create Room</button>
+
+      <div class="or-divider">
+        <div class="or-line"></div>
+        <div class="or-text">or join existing</div>
+        <div class="or-line"></div>
+      </div>
+
+      <div class="form-field">
+        <label class="form-label">Room Code</label>
+        <div class="join-row">
+          <input class="form-input" id="codeInput" type="text" placeholder="ABCD" maxlength="4">
+          <button class="btn-join" id="joinBtn">Join →</button>
+        </div>
+      </div>
+
+      <div class="discord-note">or use Discord /create-game &amp; /join-game</div>
     </div>
 
-    <div class="idle-actions">
-      <button class="btn primary" id="createBtn">[ Create Room ]</button>
-    </div>
+    <!-- ── ACTIVE PANEL ── -->
+    <div id="activePanel">
+      <div class="room-code-section">
+        <div class="room-code-label">Room Code</div>
+        <div class="room-code" id="roomCode">----</div>
+        <div class="room-code-sub">Share this code with your opponents</div>
+      </div>
 
-    <div class="idle-divider">
-      <div class="idle-divider-line"></div>
-      <div class="idle-divider-text">or join</div>
-      <div class="idle-divider-line"></div>
-    </div>
+      <div class="info-bar">
+        <div class="info-cell">
+          <div class="info-cell-label">Players</div>
+          <div class="info-cell-val" id="playerCount">0/4</div>
+        </div>
+        <div class="info-cell">
+          <div class="info-cell-label">Status</div>
+          <div class="info-cell-val" id="statusVal" style="color:var(--muted);font-size:16px;">Waiting</div>
+        </div>
+        <div class="info-cell">
+          <div class="info-cell-label">Max</div>
+          <div class="info-cell-val">4</div>
+        </div>
+      </div>
 
-    <div class="idle-field">
-      <span class="idle-label">Room Code</span>
-      <div class="join-row">
-        <input class="idle-input" id="codeInput" type="text" placeholder="ABCD" maxlength="4">
-        <button class="btn" id="joinBtn">[ Join ]</button>
+      <div class="players-section">
+        <div class="players-title">Challengers</div>
+        <div id="playerGrid"></div>
+      </div>
+
+      <div class="bottom-area">
+        <div class="flavor-text" id="flavor">Waiting for players to join...</div>
+        <button class="btn-begin" id="startBtn" disabled>Begin the Duel</button>
+        <div class="host-hint" id="hostNote">You are the host — press Begin when everyone has joined</div>
       </div>
     </div>
 
-    <div class="idle-discord-note">// or use discord /create-game &amp; /join-game</div>
   </div>
-
-  <!-- ── ACTIVE PANEL ── -->
-  <div id="activePanel">
-    <div class="code-section">
-      <div class="code-label">Room Code</div>
-      <div class="code-val" id="roomCode">----</div>
-      <div class="code-note" id="codeNote">// share with opponents</div>
-    </div>
-
-    <div class="info-strip">
-      <div class="info-cell"><div class="info-label">Players</div><div class="info-val" id="playerCount">0/4</div></div>
-      <div class="info-cell"><div class="info-label">Status</div><div class="info-val" id="statusVal" style="font-size:16px;color:#8a7a60;">WAIT</div></div>
-      <div class="info-cell"><div class="info-label">Max</div><div class="info-val" style="font-size:16px;">4</div></div>
-    </div>
-
-    <div class="section-head">// Challengers</div>
-    <div class="players" id="playerGrid"></div>
-
-    <div class="flavor" id="flavor"><em>"only the strongest mage wins" — probably</em></div>
-
-    <div class="btn-wrap">
-      <button class="btn-start" id="startBtn" disabled>[ Begin the Duel ]</button>
-    </div>
-    <div class="host-note" id="hostNote">// you are host — press begin when ready (min 2 players)</div>
-  </div>
-
-  <div class="colophon">
-    <span class="col-left">Noah White Productions · 2026</span>
-    <span class="col-right" id="ptBox">— / 4 ★</span>
-  </div>
-  <div class="bot-bar"></div>
 </div>
 
 <script>
-// ── Botanical canvas ──────────────────────────────────────────────────────────
-const c = document.getElementById('botanical');
-const ctx = c.getContext('2d');
-ctx.imageSmoothingEnabled = false;
-const W = 452;
-ctx.fillStyle = '#e8e0cc'; ctx.fillRect(0,0,W,36);
-function px(x,y,col,size=2){ctx.fillStyle=col;ctx.fillRect(x*2,y*2,size,size);}
-function sprig(sx,flip=false){
-  const d=flip?-1:1;
-  for(let i=0;i<28;i++) px(sx+i*d,9,'#5a4a30');
-  [[6,-3],[6,3],[12,-4],[12,4],[18,-3],[18,3],[24,-2],[24,2]].forEach(([dx,dy])=>{
-    const lx=sx+dx*d,ly=9+dy;
-    px(lx,ly,'#8a7a60');
-    px(lx+(dy<0?-1:1)*d,ly+(dy<0?-1:1),'#8a7a60');
-    px(lx+(dy<0?-2:2)*d,ly+(dy<0?-2:2),'#8a7a60',2);
-  });
-}
-sprig(4); sprig(W/2-1,true);
-const cx=Math.floor(W/4);
-[[0,-3],[0,3],[-3,0],[3,0],[-2,-2],[2,-2],[-2,2],[2,2]].forEach(([dx,dy])=>px(cx+dx,9+dy,'#5a4a30'));
-px(cx,9,'#c84800',4);
-for(let i=32;i<cx-4;i+=3) px(i,9,'#8a7a60');
-for(let i=cx+4;i<W/2-4;i+=3) px(i,9,'#8a7a60');
-
-// ── State ─────────────────────────────────────────────────────────────────────
-const bridge = window.waitingRoomBridge;
-const params = bridge.getParams();
-const { code, role } = params;
+const bridge  = window.waitingRoomBridge;
+const params  = bridge.getParams();
+const { code, role, deck, decks, selectedDeckId } = params;
+const isHost          = role === 'host';
 const isDiscordLaunch = code && code !== '----';
-const isHost = role === 'host';
-const MAX = 4;
-const ROMAN = ['I','II','III','IV'];
+const MAX   = 4;
 
-let myIndex = isHost ? 0 : -1;
+let myIndex     = isHost ? 0 : -1;
 let playerState = Array(MAX).fill(null);
+let activeDeckUrl = deck || '';
+let activeDeckId  = selectedDeckId || null;
 
-// ── Show correct panel ────────────────────────────────────────────────────────
+// ── Deck dropdown setup ───────────────────────────────────────────────────────
+if (decks && decks.length > 0) {
+  document.getElementById('deckDropdownField').style.display = 'block';
+  document.getElementById('deckOrLabel').style.display      = 'flex';
+  document.getElementById('deckInputLabel').textContent      = 'Or enter manually';
+
+  const dropdown = document.getElementById('deckDropdown');
+  decks.forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d.id;
+    opt.dataset.url = d.url;
+    opt.textContent = d.name;
+    if (d.id === selectedDeckId) opt.selected = true;
+    dropdown.appendChild(opt);
+  });
+
+  if (selectedDeckId) {
+    const sel = decks.find(d => d.id === selectedDeckId);
+    if (sel) {
+      activeDeckUrl = sel.url;
+      document.getElementById('deckInput').value = '';
+      document.getElementById('selectedDeckName').textContent = sel.name;
+      document.getElementById('selectedDeckBadge').classList.add('visible');
+    }
+  } else if (deck) {
+    document.getElementById('deckInput').value = deck;
+  }
+
+  dropdown.addEventListener('change', () => {
+    const opt = dropdown.options[dropdown.selectedIndex];
+    if (opt.value) {
+      activeDeckId  = opt.value;
+      activeDeckUrl = opt.dataset.url;
+      document.getElementById('deckInput').value = '';
+      document.getElementById('selectedDeckName').textContent = opt.textContent;
+      document.getElementById('selectedDeckBadge').classList.add('visible');
+    } else {
+      activeDeckId  = null;
+      activeDeckUrl = '';
+      document.getElementById('deckInput').value = '';
+      document.getElementById('selectedDeckBadge').classList.remove('visible');
+    }
+  });
+} else if (deck) {
+  document.getElementById('deckInput').value = deck;
+}
+
+// ── Panel switching ───────────────────────────────────────────────────────────
 if (isDiscordLaunch) {
-  // Launched via Discord — skip idle, go straight to active
   showActive(code);
   if (isHost) {
     document.getElementById('hostNote').classList.add('visible');
-    playerState[0] = { connected: true, name: 'YOU (HOST)', index: 0 };
+    playerState[0] = { connected:true, name:'YOU (HOST)', index:0 };
     refresh();
   }
 } else {
-  // App opened directly — show idle lobby
   showIdle();
 }
 
 function showIdle() {
-  document.getElementById('idlePanel').style.display = 'block';
+  document.getElementById('idlePanel').style.display   = 'block';
   document.getElementById('activePanel').style.display = 'none';
 }
 
 function showActive(roomCode) {
-  document.getElementById('idlePanel').style.display = 'none';
+  document.getElementById('idlePanel').style.display   = 'none';
   document.getElementById('activePanel').style.display = 'block';
   document.getElementById('roomCode').textContent = roomCode || '----';
 }
 
-// ── Idle panel actions ────────────────────────────────────────────────────────
-function normalizeDeck(val) {
-  val = val.trim();
-  if (!val) return null;
-  if (val.startsWith('http')) return val;
-  return `https://www.moxfield.com/decks/${val}/goldfish`;
+function getActiveDeck() {
+  const manual = document.getElementById('deckInput').value.trim();
+  if (manual) {
+    const url = manual.startsWith('http') ? manual : `https://www.moxfield.com/decks/${manual}/goldfish`;
+    return { url, id: activeDeckId };
+  }
+  if (activeDeckUrl) return { url: activeDeckUrl, id: activeDeckId };
+  return null;
 }
 
+// ── Idle actions ──────────────────────────────────────────────────────────────
 document.getElementById('createBtn').addEventListener('click', () => {
-  const deck = normalizeDeck(document.getElementById('deckInput').value);
-  if (!deck) { alert('Enter your deck URL first'); return; }
+  const chosen = getActiveDeck();
+  if (!chosen) { alert('Select or enter your deck first'); return; }
   document.getElementById('createBtn').disabled = true;
-  document.getElementById('createBtn').textContent = '[ Connecting... ]';
+  document.getElementById('createBtn').textContent = 'Connecting...';
   myIndex = 0;
-  playerState[0] = { connected: true, name: 'YOU (HOST)', index: 0 };
-  bridge.createRoom(deck);
+  playerState[0] = { connected:true, name:'YOU (HOST)', index:0 };
+  bridge.createRoom(chosen.url, chosen.id);
 });
 
 document.getElementById('joinBtn').addEventListener('click', () => {
-  const deck = normalizeDeck(document.getElementById('deckInput').value);
-  const code = document.getElementById('codeInput').value.trim().toUpperCase();
-  if (!deck) { alert('Enter your deck URL first'); return; }
-  if (code.length !== 4) { alert('Enter a 4-character room code'); return; }
+  const chosen  = getActiveDeck();
+  const codeVal = document.getElementById('codeInput').value.trim().toUpperCase();
+  if (!chosen) { alert('Select or enter your deck first'); return; }
+  if (codeVal.length !== 4) { alert('Enter a 4-character room code'); return; }
   document.getElementById('joinBtn').disabled = true;
   document.getElementById('joinBtn').textContent = '...';
-  bridge.joinRoom(code, deck);
+  bridge.joinRoom(codeVal, chosen.url, chosen.id);
 });
 
-document.getElementById('codeInput').addEventListener('keydown', (e) => {
+document.getElementById('codeInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') document.getElementById('joinBtn').click();
+});
+
+document.getElementById('deckInput').addEventListener('input', e => {
+  activeDeckUrl = e.target.value.trim();
+  activeDeckId  = null;
+  const dd = document.getElementById('deckDropdown');
+  if (dd) dd.value = '';
+  document.getElementById('selectedDeckBadge').classList.remove('visible');
 });
 
 // ── Render ────────────────────────────────────────────────────────────────────
 function refresh() {
   const n = playerState.filter(p => p && p.connected).length;
   document.getElementById('playerCount').textContent = `${n}/4`;
-  document.getElementById('ptBox').textContent = `${n} / 4 ★`;
 
   const grid = document.getElementById('playerGrid');
   grid.innerHTML = '';
   for (let i = 0; i < MAX; i++) {
-    const p = playerState[i];
+    const p     = playerState[i];
     const filled = p && p.connected;
-    const isMe = filled && i === myIndex;
-    const cls = isMe ? 'you' : filled ? 'joined' : '';
-    const row = document.createElement('div');
-    row.className = `player ${cls}`.trim();
+    const isMe   = filled && i === myIndex;
+    const cls    = isMe ? 'you' : filled ? 'joined' : '';
+    const row    = document.createElement('div');
+    row.className = `player-row ${cls}`.trim();
     row.innerHTML = `
-      <div class="player-idx">${ROMAN[i]}</div>
+      <div class="player-num">${i + 1}</div>
       <div class="player-info">
-        <div class="player-name${filled?' active':''}">${filled ? (p.name||`PLAYER_${i+1}`) : '-------'}</div>
-        <div class="player-status ${filled?'ok':'wait'}">${filled ? (isMe?'YOU':'CONNECTED') : 'OPEN SLOT'}</div>
+        <div class="player-name${filled?' active':''}">${filled ? (p.name||`Player ${i+1}`) : 'Open Slot'}</div>
+        <div class="player-status ${filled?'ok':'wait'}">${filled ? (isMe?'You':'Connected') : 'Waiting...'}</div>
       </div>
-      <div class="player-badge">${i===0?'HOST':`P${i+1}`}</div>
+      <div class="player-badge">${i===0?'Host':`P${i+1}`}</div>
     `;
     grid.appendChild(row);
   }
@@ -302,81 +661,76 @@ function refresh() {
 
 function applyServerList(players) {
   if (!players || !Array.isArray(players)) return;
-  playerState = players.map((p, i) => p && p.connected ? { ...p, index: i } : null);
+  playerState = players.map((p,i) => p && p.connected ? {...p, index:i} : null);
 }
 
 function updateStatus(n) {
+  const sv = document.getElementById('statusVal');
   if (n >= 2) {
-    document.getElementById('statusVal').textContent = 'RDY';
-    document.getElementById('statusVal').style.color = '#2a6020';
-    if (isHost || myIndex === 0) document.getElementById('startBtn').disabled = false;
+    sv.textContent = 'Ready';
+    sv.style.color = 'var(--green)';
+    if (myIndex === 0) document.getElementById('startBtn').disabled = false;
   } else {
-    document.getElementById('statusVal').textContent = 'WAIT';
-    document.getElementById('statusVal').style.color = '#8a7a60';
+    sv.textContent = 'Waiting';
+    sv.style.color = 'var(--muted)';
     document.getElementById('startBtn').disabled = true;
   }
 }
 
 // ── Bridge events ─────────────────────────────────────────────────────────────
-bridge.onStatus((data) => {
-
+bridge.onStatus(data => {
   if (data.type === 'room-created') {
-    // Manual create — switch to active panel
     showActive(data.code);
     document.getElementById('hostNote').classList.add('visible');
     applyServerList(data.players);
-    playerState[0] = { connected: true, name: 'YOU (HOST)', index: 0 };
+    playerState[0] = { connected:true, name:'YOU (HOST)', index:0 };
     refresh();
 
   } else if (data.type === 'room-joined') {
-    // Manual join — switch to active panel
     myIndex = data.playerIndex;
     showActive(data.code);
     applyServerList(data.players);
     const n = refresh();
     updateStatus(n);
-    document.getElementById('flavor').innerHTML = `<em>// joined as Player ${myIndex+1} — waiting for host to begin</em>`;
+    document.getElementById('flavor').textContent = `Joined as Player ${myIndex+1} — waiting for host to begin`;
 
   } else if (data.type === 'player-joined') {
     applyServerList(data.players);
     const n = refresh();
     updateStatus(n);
-    document.getElementById('flavor').innerHTML = `<em>// ${n} of 4 challengers present — host begins when ready</em>`;
+    document.getElementById('flavor').textContent = `${n} of 4 players connected`;
 
   } else if (data.type === 'player-disconnected') {
     if (data.players) applyServerList(data.players);
     else if (typeof data.playerIndex === 'number') playerState[data.playerIndex] = null;
     const n = refresh();
     updateStatus(n);
-    document.getElementById('flavor').innerHTML = `<em>// a player left — ${n} remaining</em>`;
+    document.getElementById('flavor').textContent = `A player left — ${n} remaining`;
 
   } else if (data.type === 'game-start') {
-    document.getElementById('statusVal').textContent = 'GO!';
-    document.getElementById('statusVal').style.color = '#c84800';
+    document.getElementById('statusVal').textContent = 'Starting!';
+    document.getElementById('statusVal').style.color = 'var(--accent)';
     document.getElementById('flavor').classList.add('ready');
-    document.getElementById('flavor').textContent = '// opening boards...';
+    document.getElementById('flavor').textContent = 'Opening boards...';
     document.getElementById('startBtn').disabled = true;
-    document.getElementById('startBtn').textContent = '[ Loading... ]';
+    document.getElementById('startBtn').textContent = 'Loading...';
     bridge.launchGame();
 
   } else if (data.type === 'error') {
-    // If still on idle panel, re-enable buttons
+    if (data.message && (data.message.includes('ECONNRESET') || data.message.includes('ECONNREFUSED'))) return;
     document.getElementById('createBtn').disabled = false;
-    document.getElementById('createBtn').textContent = '[ Create Room ]';
+    document.getElementById('createBtn').textContent = 'Create Room';
     document.getElementById('joinBtn').disabled = false;
-    document.getElementById('joinBtn').textContent = '[ Join ]';
-    const flavor = document.getElementById('flavor');
-    flavor.classList.add('error');
-    flavor.textContent = `// error: ${data.message}`;
-    // Also show error on idle panel
-    alert(`Error: ${data.message}`);
+    document.getElementById('joinBtn').textContent = 'Join →';
+    document.getElementById('flavor').classList.add('error');
+    document.getElementById('flavor').textContent = `Error: ${data.message}`;
   }
 });
 
 document.getElementById('startBtn').addEventListener('click', () => {
   if (myIndex !== 0) return;
   document.getElementById('startBtn').disabled = true;
-  document.getElementById('startBtn').textContent = '[ Starting... ]';
+  document.getElementById('startBtn').textContent = 'Starting...';
   bridge.startGame();
 });
 </script>

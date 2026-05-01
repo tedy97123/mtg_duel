@@ -1,6 +1,6 @@
 {
   "name": "moxfield",
-  "version": "1.1.13",
+  "version": "2.0.00",
   "description": "",
   "main": "src/main/main.js",
   "scripts": {
@@ -9,32 +9,45 @@
     "dist": "electron-builder --win",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-"build": {
-  "appId": "com.mtgduel.app",
-  "productName": "MTG Duel",
-  "files": [
-    "src/**/*",
-    "preload/**/*",
-    "lobby/**/*",
-    "shared/**/*",
-    "node_modules/**/*"
-  ],
-  "protocols": {
-    "name": "MTG Duel",
-    "schemes": ["mtgduel"]
+  "build": {
+    "appId": "com.mtgduel.app",
+    "productName": "MTG Duel",
+    "files": [
+      "src/**/*",
+      "preload/**/*",
+      "lobby/**/*",
+      "shared/**/*",
+      "node_modules/**/*"
+    ],
+    "protocols": {
+      "name": "MTG Duel",
+      "schemes": [
+        "mtgduel"
+      ]
+    },
+    "extraMetadata": {
+    "env": {
+      "SUPABASE_URL": "https://wkgqxwzwvvjssdkzseqq.supabase.co",
+      "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndrZ3F4d3p3dnZqc3Nka3pzZXFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1MDU2MDIsImV4cCI6MjA5MzA4MTYwMn0.rQULtFN8TETnurzvkf_eQDM3eGT3fASIKFV4IcpaZ8U",
+      "DISCORD_CLIENT_ID": "1498191722688024676",
+      "DISCORD_CLIENT_SECRET": "AhgqEZHLMqLR5lbxJmqk_8kaHnnxojCG",
+      "RELAY_SERVER_URL": "wss://mtg-duel-relay-tedy.fly.dev"
+    }
   },
-  "win": {
-    "target": "nsis"
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.games"
+    }
   },
-  "mac": {
-    "target": "dmg",
-     "category": "public.app-category.games"
-  }
-},
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@supabase/supabase-js": "^2.105.1",
+    "dotenv": "^17.4.2",
     "ws": "^8.18.0"
   },
   "devDependencies": {

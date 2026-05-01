@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>MTG Duel — Profile</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #0a0a0f;
+  --surface: #111118;
+  --card:    #16161f;
+  --border:  #1e1e2e;
+  --accent:  #e84545;
+  --accent2: #ff6b35;
+  --text:    #e8e8f0;
+  --muted:   #5a5a7a;
+  --green:   #22c55e;
+  --green-bg:#0f2a1a;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'DM Mono', monospace;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-y: auto;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 50% 40% at 80% 10%, rgba(232,69,69,0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 30% at 10% 80%, rgba(255,107,53,0.04) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.layout {
+  position: relative;
+  z-index: 1;
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 32px 24px 48px;
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32px;
+}
+
+.header-logo {
+  font-family: 'Syne', sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-logo span {
+  width: 28px; height: 28px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+}
+
+.btn-logout {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 1px;
+}
+
+.btn-logout:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── Profile hero ── */
+.profile-hero {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 28px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.profile-hero::before {
+  content: '';
+  position: absolute;
+  top: -40px; right: -40px;
+  width: 180px; height: 180px;
+  background: radial-gradient(circle, rgba(232,69,69,0.08), transparent 70%);
+  pointer-events: none;
+}
+
+.avatar {
+  width: 64px; height: 64px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Syne', sans-serif;
+  font-size: 28px;
+  font-weight: 800;
+  flex-shrink: 0;
+  box-shadow: 0 0 30px rgba(232,69,69,0.25);
+}
+
+.profile-info { flex: 1; }
+
+.profile-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.profile-meta { font-size: 11px; color: var(--muted); letter-spacing: 1px; }
+
+.btn-play {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 20px rgba(232,69,69,0.3);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btn-play:hover { transform: translateY(-1px); box-shadow: 0 8px 30px rgba(232,69,69,0.4); }
+.btn-play:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
+
+/* ── Selected deck banner ── */
+.selected-banner {
+  background: var(--green-bg);
+  border: 1px solid rgba(34,197,94,0.2);
+  border-radius: 12px;
+  padding: 12px 18px;
+  margin-bottom: 20px;
+  display: none;
+  align-items: center;
+  gap: 12px;
+}
+
+.selected-banner.visible { display: flex; }
+.selected-banner-dot { width:8px; height:8px; border-radius:50%; background:var(--green); flex-shrink:0; box-shadow:0 0 8px var(--green); }
+.selected-banner-label { font-size:10px; color:var(--green); letter-spacing:2px; text-transform:uppercase; margin-bottom:2px; }
+.selected-banner-name { font-size:13px; color:#fff; font-weight:500; }
+.selected-banner-tag { margin-left:auto; font-size:9px; letter-spacing:2px; color:var(--green); text-transform:uppercase; border:1px solid rgba(34,197,94,0.3); padding:2px 8px; border-radius:4px; }
+
+/* ── Stats ── */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 16px;
+  text-align: center;
+  transition: border-color 0.2s;
+}
+
+.stat-card:hover { border-color: rgba(232,69,69,0.3); }
+.stat-label { font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; }
+.stat-val { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 800; color: var(--text); line-height: 1; }
+
+/* ── Section ── */
+.section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.section-header {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.section-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.btn-add {
+  background: rgba(232,69,69,0.1);
+  border: 1px solid rgba(232,69,69,0.3);
+  color: var(--accent);
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 1px;
+}
+
+.btn-add:hover { background: rgba(232,69,69,0.2); }
+
+/* ── Deck list ── */
+.deck-list { padding: 8px; }
+
+.deck-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  transition: background 0.15s;
+  cursor: default;
+}
+
+.deck-item:hover { background: rgba(255,255,255,0.03); }
+
+.deck-item.selected {
+  background: var(--green-bg);
+  border: 1px solid rgba(34,197,94,0.15);
+}
+
+.deck-stripe {
+  width: 4px; height: 40px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.deck-info { flex: 1; min-width: 0; }
+
+.deck-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+
+.deck-meta { font-size: 10px; color: var(--muted); letter-spacing: 1px; }
+
+.deck-selected-tag {
+  font-size: 9px;
+  color: var(--green);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-top: 4px;
+  display: none;
+}
+
+.deck-item.selected .deck-selected-tag { display: block; }
+
+.deck-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+.btn-use {
+  padding: 6px 14px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 1px;
+}
+
+.btn-use:hover, .btn-use.active {
+  background: var(--green-bg);
+  border-color: rgba(34,197,94,0.4);
+  color: var(--green);
+}
+
+.btn-del {
+  width: 30px; height: 30px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-del:hover { border-color: var(--accent); color: var(--accent); background: rgba(232,69,69,0.08); }
+
+/* ── Add deck form ── */
+.add-form {
+  display: none;
+  padding: 20px 24px;
+  border-top: 1px solid var(--border);
+  background: rgba(0,0,0,0.2);
+}
+
+.form-label {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  outline: none;
+  margin-bottom: 14px;
+  transition: border-color 0.2s;
+}
+
+.form-input:focus { border-color: rgba(232,69,69,0.5); }
+.form-input::placeholder { color: var(--muted); }
+
+.form-actions { display: flex; gap: 10px; }
+
+.btn-save {
+  flex: 1;
+  padding: 12px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn-save:hover { opacity: 0.85; }
+
+.btn-cancel {
+  padding: 12px 20px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-cancel:hover { border-color: rgba(255,255,255,0.2); color: var(--text); }
+
+/* ── Empty state ── */
+.empty { padding: 32px; text-align: center; color: var(--muted); font-size: 12px; letter-spacing: 1px; }
+
+/* ── Match list ── */
+.match-list { padding: 8px; }
+
+.match-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  transition: background 0.15s;
+}
+
+.match-item:hover { background: rgba(255,255,255,0.02); }
+
+.match-result {
+  font-family: 'Syne', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  width: 44px;
+  text-align: center;
+  padding: 4px 8px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.match-result.win  { background:rgba(34,197,94,0.15); color:var(--green); }
+.match-result.loss { background:rgba(232,69,69,0.15); color:var(--accent); }
+.match-result.unknown { background:rgba(255,255,255,0.05); color:var(--muted); }
+
+.match-info { flex:1; }
+.match-room { font-size:12px; color:var(--text); margin-bottom:3px; }
+.match-date { font-size:10px; color:var(--muted); letter-spacing:1px; }
+
+/* Stripes colors */
+.stripe-0{background:#e84545;}
+.stripe-1{background:#22c55e;}
+.stripe-2{background:#5865F2;}
+.stripe-3{background:#ff6b35;}
+.stripe-4{background:#a855f7;}
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-logo">
+      <span>⚔</span>
+      MTG DUEL
+    </div>
+    <button class="btn-logout" id="logoutBtn">Logout</button>
+  </div>
+
+  <!-- Profile hero -->
+  <div class="profile-hero">
+    <div class="avatar" id="avatarBox">?</div>
+    <div class="profile-info">
+      <div class="profile-name" id="profileName">Loading...</div>
+      <div class="profile-meta" id="profileMeta">// mtg duel member</div>
+    </div>
+    <button class="btn-play" id="playBtn" disabled>Play Now →</button>
+  </div>
+
+  <!-- Selected deck banner -->
+  <div class="selected-banner" id="selectedBanner">
+    <div class="selected-banner-dot"></div>
+    <div>
+      <div class="selected-banner-label">Playing with</div>
+      <div class="selected-banner-name" id="selectedBannerName">—</div>
+    </div>
+    <div class="selected-banner-tag">Selected</div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">Games</div>
+      <div class="stat-val" id="statGames">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Wins</div>
+      <div class="stat-val" id="statWins">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Win %</div>
+      <div class="stat-val" id="statWinRate">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Decks</div>
+      <div class="stat-val" id="statDecks">0</div>
+    </div>
+  </div>
+
+  <!-- Decks section -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">Your Decks</div>
+      <button class="btn-add" id="addDeckBtn">+ Add Deck</button>
+    </div>
+    <div class="deck-list" id="deckList">
+      <div class="empty">No decks saved yet</div>
+    </div>
+    <div class="add-form" id="addDeckForm">
+      <label class="form-label">Deck Name</label>
+      <input class="form-input" id="deckNameInput" type="text" placeholder="e.g. Sliver Queen Commander">
+      <label class="form-label">Moxfield URL or ID</label>
+      <input class="form-input" id="deckUrlInput" type="text" placeholder="https://moxfield.com/decks/...">
+      <div class="form-actions">
+        <button class="btn-save" id="saveDeckBtn">Save Deck</button>
+        <button class="btn-cancel" id="cancelDeckBtn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Matches section -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">Recent Matches</div>
+    </div>
+    <div class="match-list" id="matchList">
+      <div class="empty">No matches yet</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const bridge = window.profileBridge;
+let currentSelectedId = null;
+let allDecks = [];
+
+bridge.getProfile().then(({ user, decks, matches, stats, selectedDeckId }) => {
+  document.getElementById('profileName').textContent = user.username || 'Guest';
+  document.getElementById('avatarBox').textContent   = (user.username || '?')[0].toUpperCase();
+  document.getElementById('profileMeta').textContent = `Member since ${new Date(user.created_at || Date.now()).getFullYear()}`;
+  document.getElementById('playBtn').disabled = false;
+
+  document.getElementById('statGames').textContent   = stats.games || 0;
+  document.getElementById('statWins').textContent    = stats.wins  || 0;
+  document.getElementById('statDecks').textContent   = decks.length || 0;
+  const wr = stats.games > 0 ? Math.round((stats.wins / stats.games) * 100) + '%' : '—';
+  document.getElementById('statWinRate').textContent = wr;
+
+  allDecks = decks;
+  currentSelectedId = selectedDeckId || null;
+  renderDecks(decks, currentSelectedId);
+  renderMatches(matches);
+
+  if (currentSelectedId) {
+    const sel = decks.find(d => d.id === currentSelectedId);
+    if (sel) showBanner(sel.name);
+  }
+});
+
+function showBanner(name) {
+  document.getElementById('selectedBannerName').textContent = name;
+  document.getElementById('selectedBanner').classList.add('visible');
+}
+
+function hideBanner() {
+  document.getElementById('selectedBanner').classList.remove('visible');
+}
+
+const STRIPES = ['stripe-0','stripe-1','stripe-2','stripe-3','stripe-4'];
+
+function renderDecks(decks, selectedId) {
+  const list = document.getElementById('deckList');
+  document.getElementById('statDecks').textContent = decks.length;
+
+  if (!decks.length) { list.innerHTML = '<div class="empty">No decks saved yet</div>'; return; }
+
+  list.innerHTML = decks.map((deck, i) => {
+    const isSel = deck.id === selectedId;
+    return `
+      <div class="deck-item${isSel?' selected':''}">
+        <div class="deck-stripe ${STRIPES[i % STRIPES.length]}"></div>
+        <div class="deck-info">
+          <div class="deck-name">${deck.name}</div>
+          <div class="deck-meta">Used ${deck.use_count||0}× · ${deck.last_used ? new Date(deck.last_used).toLocaleDateString() : 'never'}</div>
+          <div class="deck-selected-tag">✓ Selected for play</div>
+        </div>
+        <div class="deck-actions">
+          <button class="btn-use${isSel?' active':''}" onclick="selectDeck('${deck.id}','${deck.url}','${deck.name.replace(/'/g,"\\'")}')">
+            ${isSel ? '✓ Using' : 'Use'}
+          </button>
+          <button class="btn-del" onclick="deleteDeck('${deck.id}')">×</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderMatches(matches) {
+  const list = document.getElementById('matchList');
+  if (!matches || !matches.length) { list.innerHTML = '<div class="empty">No matches yet</div>'; return; }
+
+  list.innerHTML = matches.map(m => {
+    const result = m.result || 'unknown';
+    const date   = m.matches?.started_at ? new Date(m.matches.started_at).toLocaleDateString() : '—';
+    return `
+      <div class="match-item">
+        <div class="match-result ${result}">${result === 'win' ? 'WIN' : result === 'loss' ? 'LOSS' : '?'}</div>
+        <div class="match-info">
+          <div class="match-room">Room ${m.matches?.room_code || '—'}</div>
+          <div class="match-date">${date}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function selectDeck(id, url, name) {
+  currentSelectedId = id;
+  bridge.selectDeck(id, url, name);
+  showBanner(name);
+  renderDecks(allDecks, id);
+}
+
+function deleteDeck(id) {
+  if (!confirm('Remove this deck?')) return;
+  bridge.deleteDeck(id).then(decks => {
+    allDecks = decks;
+    if (currentSelectedId === id) { currentSelectedId = null; hideBanner(); }
+    renderDecks(decks, currentSelectedId);
+  });
+}
+
+document.getElementById('addDeckBtn').addEventListener('click', () => {
+  document.getElementById('addDeckForm').style.display = 'block';
+  document.getElementById('deckNameInput').focus();
+});
+
+document.getElementById('cancelDeckBtn').addEventListener('click', () => {
+  document.getElementById('addDeckForm').style.display = 'none';
+  document.getElementById('deckNameInput').value = '';
+  document.getElementById('deckUrlInput').value  = '';
+});
+
+document.getElementById('saveDeckBtn').addEventListener('click', () => {
+  const name = document.getElementById('deckNameInput').value.trim();
+  const url  = document.getElementById('deckUrlInput').value.trim();
+  if (!name || !url) { alert('Fill in both fields'); return; }
+  bridge.addDeck(name, url).then(decks => {
+    allDecks = decks;
+    renderDecks(decks, currentSelectedId);
+    document.getElementById('cancelDeckBtn').click();
+  });
+});
+
+document.getElementById('playBtn').addEventListener('click',   () => bridge.goToWaitingRoom());
+document.getElementById('logoutBtn').addEventListener('click', () => bridge.logout());
+</script>
+</body>
+</html>

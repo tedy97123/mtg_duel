@@ -1,7 +1,9 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 const raw = process.argv.find(a => a.startsWith('--waiting-params='));
-const params = raw ? JSON.parse(raw.replace('--waiting-params=', '')) : { code: '----', role: 'host' };
+const params = raw ? JSON.parse(raw.replace('--waiting-params=', '')) : {
+  code: '----', role: 'host', deck: '', decks: [], selectedDeckId: null,
+};
 
 contextBridge.exposeInMainWorld('waitingRoomBridge', {
   getParams() { return params; },
@@ -10,15 +12,13 @@ contextBridge.exposeInMainWorld('waitingRoomBridge', {
     ipcRenderer.on('waiting:status', (_event, data) => callback(data));
   },
 
-  // Manual lobby actions
-  createRoom(deckUrl) {
-    ipcRenderer.send('waiting:create-room', { deckUrl });
+  createRoom(deckUrl, deckId) {
+    ipcRenderer.send('waiting:create-room', { deckUrl, deckId });
   },
-  joinRoom(code, deckUrl) {
-    ipcRenderer.send('waiting:join-room', { code, deckUrl });
+  joinRoom(code, deckUrl, deckId) {
+    ipcRenderer.send('waiting:join-room', { code, deckUrl, deckId });
   },
 
-  // Game flow
   startGame() {
     ipcRenderer.send('waiting:start');
   },

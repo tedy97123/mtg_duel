@@ -69,6 +69,14 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  if (url.pathname === '/auth/callback') {
+    const code = url.searchParams.get('code');
+    const deepLink = `mtgduel://auth/callback?code=${code}`;
+    res.writeHead(302, { Location: deepLink });
+    res.end();
+    return;
+  }
+
   res.writeHead(404);
   res.end('Not found');
 });
