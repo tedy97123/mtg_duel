@@ -19,6 +19,10 @@ contextBridge.exposeInMainWorld('waitingRoomBridge', {
     ipcRenderer.send('waiting:join-room', { code, deckUrl, deckId });
   },
 
+  leaveRoom() {
+    ipcRenderer.send('waiting:leave-room');
+  },
+
   startGame() {
     ipcRenderer.send('waiting:start');
   },
